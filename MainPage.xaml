@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="DISMOGT_REPORTES.MainPage">
+
+    <ContentPage.BackgroundImageSource>
+        <FileImageSource File="background.png" />
+    </ContentPage.BackgroundImageSource>
+
+    <VerticalStackLayout Padding="20" VerticalAlignment="Start" HorizontalAlignment="Center">
+
+        <Image Source="logo.png" Aspect="AspectFit" WidthRequest="180" HeightRequest="140" />
+        <DatePicker x:Name="FechaDatePicker" TextColor="White" />
+
+        <!-- Agregamos un Picker para seleccionar el tipo de informe -->
+        <Picker x:Name="TipoInformePicker" Title="Seleccione un tipo de informe" TextColor="White">
+            <Picker.Items>
+                <x:String>Efectividad</x:String>
+                <x:String>Venta por proveedor</x:String>
+                <x:String>Venta por SKU</x:String>
+                <x:String>Venta por pedido</x:String>
+                <x:String>Venta detallada por cliente</x:String>
+                <x:String>Venta X cajas y clasificación</x:String>
+                <x:String>Actualizar datos</x:String>
+            </Picker.Items>
+        </Picker>
+
+        <Button Text="Generar" TextColor="White" Clicked="OnGenerarButtonClicked" />
+        <Label x:Name="DataLabel" TextColor="White" FontSize="16" HorizontalTextAlignment="Start" VerticalTextAlignment="Start" />
+        <Label x:Name="ErrorLabel" TextColor="Red" FontSize="16" HeightRequest="100" VerticalTextAlignment="Center" />
+
+    </VerticalStackLayout>
+
+</ContentPage>

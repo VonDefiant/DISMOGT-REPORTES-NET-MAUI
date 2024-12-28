@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:d="http://schemas.microsoft.com/dotnet/2021/maui/design"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             x:Class="DISMOGT_REPORTES.resmdetallereport">
+
+    <ContentPage.BackgroundImageSource>
+        <FileImageSource File="background.png" />
+    </ContentPage.BackgroundImageSource>
+
+    <StackLayout>
+        <!-- Encabezado de la tabla -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Label Text="COD" FontAttributes="Bold" TextColor="White" HorizontalOptions="CenterAndExpand" Grid.Column="0" />
+            <Label Text="DESCRIPCION" FontAttributes="Bold" TextColor="White" HorizontalOptions="CenterAndExpand" Grid.Column="1" />
+            <Label Text="UNIDADES" FontAttributes="Bold" TextColor="White" HorizontalOptions="CenterAndExpand" Grid.Column="2" />
+            <Label Text="VENTA" FontAttributes="Bold" TextColor="White" HorizontalOptions="CenterAndExpand" Grid.Column="3" />
+            <Label Text="COBERTURAS" FontAttributes="Bold" TextColor="White" HorizontalOptions="CenterAndExpand" Grid.Column="4" />
+        </Grid>
+
+        <!-- Contenido de la tabla -->
+        <ListView x:Name="ReportListView" ItemsSource="{Binding ReportData}">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <ViewCell>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Label Text="{Binding COD_ART}" FontAttributes="None" TextColor="White" HorizontalOptions="CenterAndExpand" Grid.Column="0" />
+                            <Label Text="{Binding DES_ART}" FontAttributes="None" TextColor="White" HorizontalOptions="CenterAndExpand" Grid.Column="1" />
+                            <Label Text="{Binding DESCRIPCION}" FontAttributes="None" TextColor="White" HorizontalOptions="CenterAndExpand" Grid.Column="2" />
+                            <Label Text="{Binding UNIDADES}" FontAttributes="None" TextColor="White" HorizontalOptions="CenterAndExpand" Grid.Column="3" />
+                            <Label Text="{Binding NOMBRE_CLIENTE}" FontAttributes="None" TextColor="White" HorizontalOptions="CenterAndExpand" Grid.Column="4" />
+                            <Label Text="{Binding Path=BindingContext._fechaBuscada, Source={x:Reference Name=ThisPage}, StringFormat='Fecha: {0:d/M/yyyy}'}" FontAttributes="None" TextColor="White" HorizontalOptions="CenterAndExpand" Grid.Column="5" />
+                        </Grid>
+                    </ViewCell>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </StackLayout>
+
+</ContentPage>
