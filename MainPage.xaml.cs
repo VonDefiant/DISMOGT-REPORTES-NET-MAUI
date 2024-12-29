@@ -137,7 +137,7 @@ namespace DISMOGT_REPORTES
                         break;
                     case "Venta Detallada":
                         var resultDetalle = resDetalleReport.ObtenerDatos(fechaBuscada, companiadm);
-                        await Navigation.PushAsync(new resmdetallereport(resultDetalle, fechaBuscada, rutaSeleccionada));
+                        await Navigation.PushAsync(new ResmDetalleReport(resultDetalle, fechaBuscada, rutaSeleccionada));
                         break;
                     case "Actualizar datos":
                         await Navigation.PushAsync(new DescargaruUXCdb());

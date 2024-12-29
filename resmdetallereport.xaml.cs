@@ -1,16 +1,17 @@
 using System;
 using System.Collections.Generic;
-using Microsoft.Maui.Controls; // Cambié a Microsoft.Maui.Controls para MAUI
+using Microsoft.Maui.Controls;
+using Microsoft.Maui.Graphics;
 
-namespace DISMOGT_REPORTES // Cambié el espacio de nombres a tu estructura de MAUI
+namespace DISMOGT_REPORTES
 {
-    public partial class resmdetallereport : ContentPage
+    public partial class ResmDetalleReport : ContentPage
     {
         private readonly List<ReporteDatadetalle> _reportData;
         private readonly string _fechaBuscada;
         private readonly string _rutaSeleccionada;
 
-        public resmdetallereport(List<ReporteDatadetalle> reportData, string fechaBuscada, string rutaSeleccionada)
+        public ResmDetalleReport(List<ReporteDatadetalle> reportData, string fechaBuscada, string rutaSeleccionada)
         {
             InitializeComponent();
             _reportData = reportData;
@@ -22,85 +23,110 @@ namespace DISMOGT_REPORTES // Cambié el espacio de nombres a tu estructura de MA
 
         private void InitializePage()
         {
-            var listView = new ListView
+            var listView = new CollectionView
             {
                 ItemsSource = _reportData,
-                RowHeight = 50,
                 ItemTemplate = new DataTemplate(() =>
                 {
-                    var grid = new Grid();
-                    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(10, GridUnitType.Star) });
-                    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18, GridUnitType.Star) });
-                    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) });
-                    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) });
-                    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) });
-                    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) });
-                    grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4, GridUnitType.Star) });
+                    var grid = new Grid
+                    {
+                        ColumnDefinitions =
+                        {
+                            new ColumnDefinition { Width = new GridLength(10, GridUnitType.Star) },
+                            new ColumnDefinition { Width = new GridLength(18, GridUnitType.Star) },
+                            new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) },
+                            new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) },
+                            new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) },
+                            new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) },
+                            new ColumnDefinition { Width = new GridLength(4, GridUnitType.Star) }
+                        }
+                    };
 
-                    var codArtLabel = new Label { FontSize = 12, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center, TextColor = Colors.White };
-                    var desArtLabel = new Label { FontSize = 12, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center, TextColor = Colors.White };
-                    var descripcionLabel = new Label { FontSize = 12, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center, TextColor = Colors.White };
-                    var unidadesLabel = new Label { FontSize = 12, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center, TextColor = Colors.White };
-                    var ventaLabel = new Label { FontSize = 12, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center, TextColor = Colors.White };
-                    var codCltLabel = new Label { FontSize = 12, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center, TextColor = Colors.White };
-                    var nombreClienteLabel = new Label { FontSize = 12, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center, TextColor = Colors.White };
+                    var codArtLabel = CreateLabel("COD_ART");
+                    var desArtLabel = CreateLabel("DES_ART");
+                    var descripcionLabel = CreateLabel("DESCRIPCION");
+                    var unidadesLabel = CreateLabel("UNIDADES");
+                    var ventaLabel = CreateLabel("VENTA");
+                    var codCltLabel = CreateLabel("COD_CLT");
+                    var nombreClienteLabel = CreateLabel("NOMBRE_CLIENTE");
 
-                    codArtLabel.SetBinding(Label.TextProperty, "COD_ART");
-                    desArtLabel.SetBinding(Label.TextProperty, "DES_ART");
-                    descripcionLabel.SetBinding(Label.TextProperty, "DESCRIPCION");
-                    unidadesLabel.SetBinding(Label.TextProperty, "UNIDADES");
-                    ventaLabel.SetBinding(Label.TextProperty, "VENTA");
-                    codCltLabel.SetBinding(Label.TextProperty, "COD_CLT");
-                    nombreClienteLabel.SetBinding(Label.TextProperty, "NOMBRE_CLIENTE");
-
-                    grid.Children.Add(codArtLabel);
-                    grid.Children.Add(desArtLabel, 1, 0);
-                    grid.Children.Add(descripcionLabel, 2, 0);
-                    grid.Children.Add(unidadesLabel, 3, 0);
-                    grid.Children.Add(ventaLabel, 4, 0);
-                    grid.Children.Add(codCltLabel, 5, 0);
-                    grid.Children.Add(nombreClienteLabel, 6, 0);
+                    grid.Add(codArtLabel);
+                    grid.Add(desArtLabel, 1, 0);
+                    grid.Add(descripcionLabel, 2, 0);
+                    grid.Add(unidadesLabel, 3, 0);
+                    grid.Add(ventaLabel, 4, 0);
+                    grid.Add(codCltLabel, 5, 0);
+                    grid.Add(nombreClienteLabel, 6, 0);
 
                     return new ViewCell { View = grid };
                 })
             };
 
-            listView.SelectionMode = ListViewSelectionMode.None;
-
-            var scrollViewHorizontal = new ScrollView
+            var headerGrid = new Grid
             {
-                Orientation = ScrollOrientation.Horizontal,
-                Content = listView
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition { Width = new GridLength(10, GridUnitType.Star) },
+                    new ColumnDefinition { Width = new GridLength(18, GridUnitType.Star) },
+                    new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) },
+                    new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) },
+                    new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) },
+                    new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) },
+                    new ColumnDefinition { Width = new GridLength(4, GridUnitType.Star) }
+                }
             };
 
-            var headerLabels = new StackLayout
+            AddHeaderToGrid(headerGrid, "ARTICULO", 0);
+            AddHeaderToGrid(headerGrid, "DESCRIPCION", 1);
+            AddHeaderToGrid(headerGrid, "PROVEEDOR", 2);
+            AddHeaderToGrid(headerGrid, "UNIDADES", 3);
+            AddHeaderToGrid(headerGrid, "VENTA", 4);
+            AddHeaderToGrid(headerGrid, "COD CTL", 5);
+            AddHeaderToGrid(headerGrid, "NOMBRE DEL CLIENTE", 6);
+
+            Content = new VerticalStackLayout
             {
-                Orientation = StackOrientation.Horizontal,
+                Spacing = 10,
                 Children =
                 {
-                    new Label { Text = "ARTICULO", FontAttributes = FontAttributes.Bold, FontSize = 12, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center, TextColor = Colors.White },
-                    new Label { Text = "DESCRIPCION", FontAttributes = FontAttributes.Bold, FontSize = 12, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center, TextColor = Colors.White },
-                    new Label { Text = "PROVEEDOR", FontAttributes = FontAttributes.Bold, FontSize = 12, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center, TextColor = Colors.White },
-                    new Label { Text = "UNIDADES", FontAttributes = FontAttributes.Bold, FontSize = 12, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center, TextColor = Colors.White },
-                    new Label { Text = "VENTA", FontAttributes = FontAttributes.Bold, FontSize = 12, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center, TextColor = Colors.White },
-                    new Label { Text = "COD CTL", FontAttributes = FontAttributes.Bold, FontSize = 12, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center, TextColor = Colors.White },
-                    new Label { Text = "NOMBRE DEL CLIENTE", FontAttributes = FontAttributes.Bold, FontSize = 12, HorizontalTextAlignment = TextAlignment.Center, VerticalTextAlignment = TextAlignment.Center, TextColor = Colors.White }
+                    new Label
+                    {
+                        Text = $"REPORTE VENTA DETALLADA {_fechaBuscada} - RUTA: {_rutaSeleccionada}",
+                        FontAttributes = FontAttributes.Bold,
+                        HorizontalTextAlignment = TextAlignment.Center,
+                        FontSize = 21,
+                        TextColor = Colors.White
+                    },
+                    headerGrid,
+                    listView
                 }
             };
+        }
 
-            var headerView = new StackLayout
+        private Label CreateLabel(string bindingPath)
+        {
+            var label = new Label
             {
-                Children = { headerLabels }
+                FontSize = 12,
+                HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center,
+                TextColor = Colors.White
             };
+            label.SetBinding(Label.TextProperty, bindingPath);
+            return label;
+        }
 
-            Content = new StackLayout
+        private void AddHeaderToGrid(Grid grid, string headerText, int columnIndex)
+        {
+            grid.Add(new Label
             {
-                Children = {
-                    new Label { Text = $"REPORTE VENTA DETALLADA {_fechaBuscada} - RUTA: {_rutaSeleccionada} ", FontAttributes = FontAttributes.Bold, HorizontalTextAlignment = TextAlignment.Center, FontSize = 21, TextColor = Colors.White },
-                    headerView,
-                    scrollViewHorizontal
-                }
-            };
+                Text = headerText,
+                FontAttributes = FontAttributes.Bold,
+                FontSize = 12,
+                HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center,
+                TextColor = Colors.White
+            }, columnIndex, 0);
         }
     }
 }

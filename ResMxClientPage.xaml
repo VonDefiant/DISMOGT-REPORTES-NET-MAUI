@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:d="http://schemas.microsoft.com/dotnet/2021/maui/design"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             x:Class="DISMOGT_REPORTES.ResMxClientPage">
+
+    <ContentPage.BackgroundImageSource>
+        <FileImageSource File="background.png" />
+    </ContentPage.BackgroundImageSource>
+
+    <StackLayout Padding="20">
+        <!-- Entrada de texto para buscar cliente -->
+        <Entry x:Name="ClienteBuscadoEntry" 
+               Placeholder="Ingrese el código de cliente" 
+               TextColor="White" 
+               PlaceholderColor="White" 
+               Completed="OnClienteBuscadoEntryCompleted" />
+
+        <!-- Contenido de la tabla con ListView -->
+        <ListView x:Name="ReportListView" ItemsSource="{Binding ReportData}">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <ViewCell>
+                        <Grid>
+                            <Label Text="{Binding DESCRIPCION}" FontSize="10" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" TextColor="White"/>
+                            <Label Text="{Binding UNIDADES}" FontSize="10" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" TextColor="White"/>
+                            <Label Text="{Binding VENTA}" FontSize="10" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" TextColor="White"/>
+                        </Grid>
+                    </ViewCell>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </StackLayout>
+</ContentPage>

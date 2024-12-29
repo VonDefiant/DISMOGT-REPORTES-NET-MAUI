@@ -4,7 +4,8 @@
              xmlns:d="http://schemas.microsoft.com/dotnet/2021/maui/design"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
-             x:Class="DISMOGT_REPORTES.ResmDetalleReport">
+             x:Class="DISMOGT_REPORTES.ResMxFamReportPage"
+             BackgroundImageSource="background.png">
 
     <ContentPage.BackgroundImageSource>
         <FileImageSource File="background.png" />
@@ -26,11 +27,11 @@
                 <DataTemplate>
                     <ViewCell>
                         <Grid>
-                            <Label Text="{Binding COD_ART}" FontAttributes="None" TextColor="White" HorizontalOptions="CenterAndExpand" />
-                            <Label Text="{Binding DES_ART}" FontAttributes="None" TextColor="White" HorizontalOptions="CenterAndExpand" />
+                            <Label Text="{Binding COD_FAM}" FontAttributes="None" TextColor="White" HorizontalOptions="CenterAndExpand" />
                             <Label Text="{Binding DESCRIPCION}" FontAttributes="None" TextColor="White" HorizontalOptions="CenterAndExpand" />
                             <Label Text="{Binding UNIDADES}" FontAttributes="None" TextColor="White" HorizontalOptions="CenterAndExpand" />
-                            <Label Text="{Binding NOMBRE_CLIENTE}" FontAttributes="None" TextColor="White" HorizontalOptions="CenterAndExpand" />
+                            <Label Text="{Binding VENTA}" FontAttributes="None" TextColor="White" HorizontalOptions="CenterAndExpand" />
+                            <Label Text="{Binding NUMERO_CLIENTES}" FontAttributes="None" TextColor="White" HorizontalOptions="CenterAndExpand" />
                             <Label Text="{Binding Source={x:Reference Name=ThisPage}, Path=BindingContext._fechaBuscada, StringFormat='Fecha: {0:d/M/yyyy}'}" FontAttributes="None" TextColor="White" HorizontalOptions="CenterAndExpand"/>
                         </Grid>
                     </ViewCell>
@@ -38,5 +39,6 @@
             </ListView.ItemTemplate>
         </ListView>
     </StackLayout>
+
 
 </ContentPage>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:d="http://schemas.microsoft.com/dotnet/2021/maui/design"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             x:Class="DISMOGT_REPORTES.ResMxCAJASReport">
+
+    <ContentPage.BackgroundImageSource>
+        <FileImageSource File="background.png" />
+    </ContentPage.BackgroundImageSource>
+
+    <StackLayout>
+        <Picker x:Name="SKUInformePicker" Title="Seleccione un proveedor" SelectedIndexChanged="OnPickerSelectedIndexChanged" TextColor="White" TitleColor="White">
+        </Picker>
+
+
+        <!-- Contenido de la tabla -->
+        <ListView x:Name="ReportListView">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <ViewCell>
+                        <Grid>
+                            <Label Text="{Binding DESCRIPCION}" FontSize="10" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                            <Label Text="{Binding UNIDADES}" FontSize="10" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                            <Label Text="{Binding VENTA}" FontSize="10" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                            <Label Text="{Binding NUMERO_COBERTURAS}" FontSize="10" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" />
+                        </Grid>
+                    </ViewCell>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </StackLayout>
+
+</ContentPage>
