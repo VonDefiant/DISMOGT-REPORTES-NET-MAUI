@@ -3,14 +3,13 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="DISMOGT_REPORTES.MainPage">
 
-    <ContentPage.BackgroundImageSource>
+<ContentPage.BackgroundImageSource>
         <FileImageSource File="background.png" />
     </ContentPage.BackgroundImageSource>
 
-    <VerticalStackLayout Padding="20" VerticalAlignment="Start" HorizontalAlignment="Center">
-
-        <Image Source="logo.png" Aspect="AspectFit" WidthRequest="180" HeightRequest="140" />
-        <DatePicker x:Name="FechaDatePicker" TextColor="White" />
+    <StackLayout VerticalOptions="StartAndExpand" HorizontalOptions="CenterAndExpand" Padding="20"   >
+        <Image Source="logo.png" Aspect="AspectFit" WidthRequest="280" HeightRequest="160"/>
+        <DatePicker x:Name="FechaDatePicker" TextColor="White"></DatePicker>
 
         <!-- Agregamos un Picker para seleccionar el tipo de informe -->
         <Picker x:Name="TipoInformePicker" Title="Seleccione un tipo de informe" TextColor="White">
@@ -25,10 +24,10 @@
             </Picker.Items>
         </Picker>
 
-        <Button Text="Generar" TextColor="White" Clicked="OnGenerarButtonClicked" />
+        <Button Text="Generar" TextColor="White" Clicked="OnGenerarButtonClicked"></Button>
         <Label x:Name="DataLabel" TextColor="White" FontSize="16" HorizontalTextAlignment="Start" VerticalTextAlignment="Start" />
-        <Label x:Name="ErrorLabel" TextColor="Red" FontSize="16" HeightRequest="100" VerticalTextAlignment="Center" />
+        <Label x:Name="ErrorLabel" TextColor="Red" FontSize="16" HeightRequest="100" VerticalTextAlignment="Center"/>
 
-    </VerticalStackLayout>
+    </StackLayout>
 
 </ContentPage>
