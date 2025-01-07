@@ -27,7 +27,7 @@
 
             <!-- Contenido: Botón -->
             <StackLayout VerticalOptions="Start" HorizontalOptions="CenterAndExpand">
-                <Button Text="ACTUALIZAR DATOS" Clicked="DescargarArchivo_Clicked" TextColor="White"/>
+                <Button Text="ACTUALIZAR DATOS" Clicked="DescargarArchivo_Clicked" TextColor="White" BackgroundColor="#F2B300"/>
             </StackLayout>
 
         </Grid>

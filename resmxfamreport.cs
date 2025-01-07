@@ -101,9 +101,4 @@ namespace DISMOGT_REPORTES
         public int NUMERO_CLIENTES { get; set; }
         public int TotalClientes { get; set; }
     }
-
-    public class VisitaDocumento
-    {
-        public string CLIENTE { get; set; }
-    }
 }

@@ -22,19 +22,22 @@ namespace DISMOGT_REPORTES
 
         private void InitializePage()
         {
+            // Crear la grilla
             var reportGrid = new Grid
             {
                 RowSpacing = 5,
+                ColumnSpacing = 5,
                 ColumnDefinitions =
                 {
                     new ColumnDefinition { Width = GridLength.Auto }, // NUM_PED
                     new ColumnDefinition { Width = GridLength.Auto }, // COD_CLT
                     new ColumnDefinition { Width = new GridLength(2.5, GridUnitType.Star) }, // NOM_CLT
-                    new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) } // MON_CIV
+                    new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) } // MONTO
                 }
             };
 
             // Encabezados
+            reportGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             AddToGrid(reportGrid, CreateLabel("NUM PED", true), 0, 0);
             AddToGrid(reportGrid, CreateLabel("CODIGO", true), 1, 0);
             AddToGrid(reportGrid, CreateLabel("CLIENTE", true), 2, 0);
@@ -42,26 +45,27 @@ namespace DISMOGT_REPORTES
 
             double totalVenta = 0;
 
+            // Agregar datos al grid
             for (int i = 0; i < _reportData.Count; i++)
             {
-                var rowIndex = i + 1;
-
-                AddToGrid(reportGrid, CreateLabel(_reportData[i].NUM_PED), 0, rowIndex);
-                AddToGrid(reportGrid, CreateLabel(_reportData[i].COD_CLT), 1, rowIndex);
-                AddToGrid(reportGrid, CreateLabel(_reportData[i].NOM_CLT), 2, rowIndex);
-                AddToGrid(reportGrid, CreateLabel(_reportData[i].MONTO), 3, rowIndex);
+                reportGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                AddToGrid(reportGrid, CreateLabel(_reportData[i].NUM_PED), 0, i + 1);
+                AddToGrid(reportGrid, CreateLabel(_reportData[i].COD_CLT), 1, i + 1);
+                AddToGrid(reportGrid, CreateLabel(_reportData[i].NOM_CLT), 2, i + 1);
+                AddToGrid(reportGrid, CreateLabel(_reportData[i].MONTO), 3, i + 1);
 
                 totalVenta += Convert.ToDouble(_reportData[i].MONTO.Replace("Q", ""));
             }
 
-            var totalLineas = _reportData.Count;
+            // Agregar fila de totales
+            var totalRow = _reportData.Count + 1;
+            reportGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            AddToGrid(reportGrid, CreateLabel("TOTAL", true), 0, totalRow);
+            AddToGrid(reportGrid, CreateLabel("PEDIDOS", true), 1, totalRow);
+            AddToGrid(reportGrid, CreateLabel($"{_reportData.Count}"), 2, totalRow);
+            AddToGrid(reportGrid, CreateLabel($"Q {totalVenta:F2}"), 3, totalRow);
 
-            // Fila de totales
-            AddToGrid(reportGrid, CreateLabel("TOTAL", true), 0, totalLineas + 1);
-            AddToGrid(reportGrid, CreateLabel("PEDIDOS", true), 1, totalLineas + 1);
-            AddToGrid(reportGrid, CreateLabel($"{totalLineas}"), 2, totalLineas + 1);
-            AddToGrid(reportGrid, CreateLabel($"Q {totalVenta:F2}"), 3, totalLineas + 1);
-
+            // Contenido principal
             Content = new ScrollView
             {
                 Content = new VerticalStackLayout
@@ -71,7 +75,7 @@ namespace DISMOGT_REPORTES
                     {
                         new Label
                         {
-                            Text = $"REPORTE DE PEDIDOS {_fechaBuscada} - RUTA: {_rutaSeleccionada}",
+                            Text = $"REPORTE DE PEDIDOS\n{_fechaBuscada} - RUTA: {_rutaSeleccionada}",
                             FontAttributes = FontAttributes.Bold,
                             HorizontalTextAlignment = TextAlignment.Center,
                             FontSize = 21,
@@ -89,7 +93,7 @@ namespace DISMOGT_REPORTES
             {
                 Text = text,
                 FontAttributes = isHeader ? FontAttributes.Bold : FontAttributes.None,
-                FontSize = isHeader ? 14 : 11,
+                FontSize = isHeader ? 14 : 10, // Cambiar el tamaño de fuente si es encabezado
                 HorizontalTextAlignment = TextAlignment.Center,
                 VerticalTextAlignment = TextAlignment.Center,
                 TextColor = Colors.White
@@ -98,6 +102,10 @@ namespace DISMOGT_REPORTES
 
         private void AddToGrid(Grid grid, View view, int column, int row)
         {
+            if (grid.RowDefinitions.Count <= row)
+            {
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            }
             Grid.SetColumn(view, column);
             Grid.SetRow(view, row);
             grid.Children.Add(view);

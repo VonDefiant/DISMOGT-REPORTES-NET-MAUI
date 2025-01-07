@@ -9,7 +9,6 @@
     Title="DISMOGT_REPORTES">
 
     <ShellContent
-        Title=""
         ContentTemplate="{DataTemplate local:MainPage}"
         Route="MainPage" />
 

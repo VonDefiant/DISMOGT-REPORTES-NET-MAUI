@@ -1,4 +1,4 @@
-﻿namespace DISMOGT_REPORTES
+﻿    namespace DISMOGT_REPORTES
 {
     public partial class AppShell : Shell
     {

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
 
+
 namespace DISMOGT_REPORTES
 {
     public partial class ResMxSKUReport : ContentPage
@@ -26,48 +27,33 @@ namespace DISMOGT_REPORTES
             _resMxSKUReportA = new ResMxSKUReportA(conn.DatabasePath);
             _rutaSeleccionada = rutaSeleccionada;
 
-            int totalClientes = _resMxSKUReportA.ObtenerTotalClientes(conn, fechaBuscada, companiadm, "%");
-            _reportData.ForEach(d => d.TotalClientes = totalClientes);
-
-            ReportListView.ItemsSource = _reportData;
-
-            reportGrid = new Grid();
+            reportGrid = new Grid
+            {
+                RowSpacing = 5,
+                ColumnSpacing = 5,
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) },
+                    new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                    new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) },
+                    new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+                }
+            };
 
             InitializePage();
         }
 
         private void InitializePage()
         {
-            reportGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(3, GridUnitType.Star) });
-            reportGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            reportGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            reportGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-            reportGrid.RowSpacing = 5;
-
+            // Encabezados
+            reportGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             AddToGrid(reportGrid, CreateLabel("DESCRIPCION", true), 0, 0);
             AddToGrid(reportGrid, CreateLabel("UND", true), 1, 0);
             AddToGrid(reportGrid, CreateLabel("VENTA", true), 2, 0);
             AddToGrid(reportGrid, CreateLabel("COB", true), 3, 0);
 
-            double totalVenta = 0;
-            int totalClientes = 0;
-
-            for (int i = 0; i < _reportData.Count; i++)
-            {
-                AddToGrid(reportGrid, CreateLabel(_reportData[i].DESCRIPCION), 0, i + 1);
-                AddToGrid(reportGrid, CreateLabel(_reportData[i].UNIDADES.ToString()), 1, i + 1);
-                AddToGrid(reportGrid, CreateLabel(_reportData[i].VENTA), 2, i + 1);
-                AddToGrid(reportGrid, CreateLabel(_reportData[i].NUMERO_COBERTURAS.ToString()), 3, i + 1);
-
-                totalVenta += Convert.ToDouble(_reportData[i].VENTA.Replace("Q", ""));
-                totalClientes = _reportData[i].TotalClientes;
-            }
-
-            AddToGrid(reportGrid, CreateLabel("TOTAL GENERAL", true), 0, _reportData.Count + 1);
-            AddToGrid(reportGrid, CreateLabel(""), 1, _reportData.Count + 1);
-            AddToGrid(reportGrid, CreateLabel($"Q {totalVenta:F2}"), 2, _reportData.Count + 1);
-            AddToGrid(reportGrid, CreateLabel(totalClientes.ToString()), 3, _reportData.Count + 1);
+            // Agregar datos iniciales
+            PopulateGridWithData(_reportData);
 
             var pickerOptions = ObtenerOpcionesParaPicker();
             var picker = new Picker
@@ -75,7 +61,8 @@ namespace DISMOGT_REPORTES
                 Title = "Seleccione un proveedor",
                 ItemsSource = pickerOptions,
                 TextColor = Colors.White,
-                TitleColor = Colors.White
+                TitleColor = Colors.White,
+                 FontSize = 14
             };
             picker.SelectedIndexChanged += OnPickerSelectedIndexChanged;
 
@@ -86,7 +73,7 @@ namespace DISMOGT_REPORTES
                 {
                     new Label
                     {
-                        Text = $"REPORTE VENTA POR ARTICULO {_fechaBuscada:dd/MM/yyyy} - RUTA: {_rutaSeleccionada}",
+                        Text = $"REPORTE VENTA POR ARTICULO \n {_fechaBuscada:dd/MM/yyyy} - RUTA: {_rutaSeleccionada}",
                         FontAttributes = FontAttributes.Bold,
                         HorizontalTextAlignment = TextAlignment.Center,
                         FontSize = 21,
@@ -114,44 +101,63 @@ namespace DISMOGT_REPORTES
                 var datosConsulta = _resMxSKUReportA.RealizarConsulta(_conn, _fechaBuscada, _companiadm, clasificacionSeleccion);
                 var totalClientes = _resMxSKUReportA.ObtenerTotalClientes(_conn, _fechaBuscada, _companiadm, clasificacionSeleccion);
 
-                LimpiarDatosEnGrid();
+                // Limpiar datos del Grid pero mantener encabezados
+                LimpiarDatosManteniendoEncabezados();
 
-                double totalVenta = 0;
-
-                for (int i = 0; i < datosConsulta.Count; i++)
-                {
-                    AddToGrid(reportGrid, CreateLabel(datosConsulta[i].DESCRIPCION), 0, i + 1);
-                    AddToGrid(reportGrid, CreateLabel(datosConsulta[i].UNIDADES.ToString()), 1, i + 1);
-                    AddToGrid(reportGrid, CreateLabel(datosConsulta[i].VENTA), 2, i + 1);
-                    AddToGrid(reportGrid, CreateLabel(datosConsulta[i].NUMERO_COBERTURAS.ToString()), 3, i + 1);
-
-                    totalVenta += Convert.ToDouble(datosConsulta[i].VENTA.Replace("Q", ""));
-                }
-
-                AddToGrid(reportGrid, CreateLabel("TOTAL GENERAL", true), 0, datosConsulta.Count + 1);
-                AddToGrid(reportGrid, CreateLabel(""), 1, datosConsulta.Count + 1);
-                AddToGrid(reportGrid, CreateLabel($"Q {totalVenta:F2}"), 2, datosConsulta.Count + 1);
-                AddToGrid(reportGrid, CreateLabel(totalClientes.ToString()), 3, datosConsulta.Count + 1);
+                // Población del Grid
+                PopulateGridWithData(datosConsulta, totalClientes);
             }
         }
 
-        private void LimpiarDatosEnGrid()
+        private void PopulateGridWithData(List<SKUReportData> data, int totalClientes = 0)
         {
-            for (int i = reportGrid.Children.Count - 1; i >= 0; i--)
+            double totalVenta = 0;
+
+            for (int i = 0; i < data.Count; i++)
             {
-                var child = reportGrid.Children[i];
+                reportGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                AddToGrid(reportGrid, CreateLabel(data[i].DESCRIPCION), 0, i + 1);
+                AddToGrid(reportGrid, CreateLabel(data[i].UNIDADES.ToString()), 1, i + 1);
+                AddToGrid(reportGrid, CreateLabel(data[i].VENTA), 2, i + 1);
+                AddToGrid(reportGrid, CreateLabel(data[i].NUMERO_COBERTURAS.ToString()), 3, i + 1);
 
-                if (child is View view)
+                totalVenta += Convert.ToDouble(data[i].VENTA.Replace("Q", ""));
+            }
+
+            // Agregar fila de totales
+            var totalRow = data.Count + 1;
+            reportGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            AddToGrid(reportGrid, CreateLabel("TOTAL GENERAL", true), 0, totalRow);
+            AddToGrid(reportGrid, CreateLabel(""), 1, totalRow);
+            AddToGrid(reportGrid, CreateLabel($"Q {totalVenta:F2}", true), 2, totalRow);
+            AddToGrid(reportGrid, CreateLabel(totalClientes.ToString(), true), 3, totalRow);
+          
+        }
+
+        private void LimpiarDatosManteniendoEncabezados()
+        {
+            var childrenToRemove = new List<View>();
+            foreach (var child in reportGrid.Children)
+            {
+                // Solo elimina las filas que no sean encabezados (fila > 0)
+                if (child is View view && Grid.GetRow(view) > 0)
                 {
-                    var row = Grid.GetRow(view);
-
-                    if (row > 0)
-                    {
-                        reportGrid.Children.Remove(view);
-                    }
+                    childrenToRemove.Add(view);
                 }
             }
+
+            foreach (var child in childrenToRemove)
+            {
+                reportGrid.Children.Remove(child);
+            }
+
+            // Limpiar las definiciones de filas, pero mantén la primera fila
+            while (reportGrid.RowDefinitions.Count > 1)
+            {
+                reportGrid.RowDefinitions.RemoveAt(1);
+            }
         }
+
 
         private List<string> ObtenerOpcionesParaPicker()
         {
@@ -164,7 +170,7 @@ namespace DISMOGT_REPORTES
             {
                 Text = text,
                 FontAttributes = isHeader ? FontAttributes.Bold : FontAttributes.None,
-                FontSize = isHeader ? 14 : 12,
+                FontSize = isHeader ? 14 : 9,
                 HorizontalTextAlignment = TextAlignment.Center,
                 VerticalTextAlignment = TextAlignment.Center,
                 TextColor = Colors.White

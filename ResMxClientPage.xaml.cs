@@ -26,10 +26,21 @@ namespace DISMOGT_REPORTES
             _resMxClient = new ResMxClient(conn.DatabasePath);
             _rutaSeleccionada = rutaSeleccionada;
 
-            ReportListView.ItemsSource = _reportData;
+            // Configurar Grid
+            reportGrid = new Grid
+            {
+                RowSpacing = 5,
+                ColumnSpacing = 5,
+                ColumnDefinitions =
+                {
+                    new ColumnDefinition { Width = GridLength.Auto },
+                    new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) },
+                    new ColumnDefinition { Width = GridLength.Auto },
+                    new ColumnDefinition { Width = GridLength.Auto }
+                }
+            };
 
-            reportGrid = new Grid();
-
+            // Entrada para buscar cliente
             productoBuscadoEntry = new Entry
             {
                 Placeholder = "Ingrese el código del cliente",
@@ -43,10 +54,11 @@ namespace DISMOGT_REPORTES
             var stackLayout = new VerticalStackLayout
             {
                 Spacing = 8,
-                Children = {
+                Children =
+                {
                     new Label
                     {
-                        Text = $"REPORTE DETALLADO POR CLIENTE {_fechaBuscada:dd/MM/yyyy} - RUTA: {_rutaSeleccionada}",
+                        Text = $"REPORTE DETALLADO POR CLIENTE \n {_fechaBuscada:dd/MM/yyyy} - RUTA: {_rutaSeleccionada}",
                         FontAttributes = FontAttributes.Bold,
                         HorizontalTextAlignment = TextAlignment.Center,
                         FontSize = 21,
@@ -54,7 +66,7 @@ namespace DISMOGT_REPORTES
                     },
                     productoBuscadoEntry,
                     labelCliente,
-                    reportGrid,
+                    reportGrid
                 }
             };
 
@@ -68,13 +80,8 @@ namespace DISMOGT_REPORTES
 
         private void InitializePage()
         {
-            reportGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            reportGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });
-            reportGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            reportGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-            reportGrid.RowSpacing = 5;
-
+            // Encabezados
+            reportGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             AddToGrid(reportGrid, CreateLabel("ARTICULO", true), 0, 0);
             AddToGrid(reportGrid, CreateLabel("DESCRIPCION", true), 1, 0);
             AddToGrid(reportGrid, CreateLabel("UNIDADES", true), 2, 0);
@@ -89,13 +96,16 @@ namespace DISMOGT_REPORTES
 
             for (int i = 0; i < _reportData.Count; i++)
             {
+                reportGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
                 AgregarEtiquetasAlGrid(_reportData[i], i + 1);
+
                 if (double.TryParse(_reportData[i].VENTA.Replace("Q", ""), out double venta))
                 {
                     totalVenta += venta;
                 }
             }
 
+            // Agregar fila de totales
             AgregarFilaTotales("VENTA TOTAL", totalVenta, _reportData.Count + 1);
         }
 
@@ -109,8 +119,9 @@ namespace DISMOGT_REPORTES
 
         private void AgregarFilaTotales(string label, double total, int row)
         {
+            reportGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             AddToGrid(reportGrid, CreateLabel(label, true), 1, row);
-            AddToGrid(reportGrid, CreateLabel($"Q {total:F2}"), 3, row);
+            AddToGrid(reportGrid, CreateLabel($"Q {total:F2}", true), 3, row);
         }
 
         private void OnClienteBuscadoEntryCompleted(object sender, EventArgs e)
@@ -120,26 +131,30 @@ namespace DISMOGT_REPORTES
 
         private void LimpiarDatosEnGrid()
         {
-            for (int i = reportGrid.Children.Count - 1; i >= 0; i--)
+            var childrenToRemove = new List<View>();
+            foreach (var child in reportGrid.Children)
             {
-                var child = reportGrid.Children[i];
-
-                if (child is View view)
+                if (child is View view && Grid.GetRow(view) > 0)
                 {
-                    var row = Grid.GetRow(view);
-
-                    if (row > 0)
-                    {
-                        reportGrid.Children.Remove(view);
-                    }
+                    childrenToRemove.Add(view);
                 }
+            }
+
+            foreach (var child in childrenToRemove)
+            {
+                reportGrid.Children.Remove(child);
+            }
+
+            while (reportGrid.RowDefinitions.Count > 1)
+            {
+                reportGrid.RowDefinitions.RemoveAt(1);
             }
         }
 
         private void ActualizarDatos()
         {
-            string productoBuscado = productoBuscadoEntry.Text;
-            var datosConsulta = _resMxClient.RealizarConsulta(_conn, _fechaBuscada, productoBuscado);
+            string clienteBuscado = productoBuscadoEntry.Text;
+            var datosConsulta = _resMxClient.RealizarConsulta(_conn, _fechaBuscada, clienteBuscado);
 
             LimpiarDatosEnGrid();
 
@@ -147,7 +162,9 @@ namespace DISMOGT_REPORTES
 
             for (int i = 0; i < datosConsulta.Count; i++)
             {
+                reportGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
                 AgregarEtiquetasAlGrid(datosConsulta[i], i + 1);
+
                 if (double.TryParse(datosConsulta[i].VENTA.Replace("Q", ""), out double venta))
                 {
                     totalVenta += venta;
@@ -156,7 +173,7 @@ namespace DISMOGT_REPORTES
 
             AgregarFilaTotales("VENTA TOTAL", totalVenta, datosConsulta.Count + 1);
 
-            labelCliente.Text = datosConsulta.FirstOrDefault()?.NOMBRE;
+            labelCliente.Text = datosConsulta.FirstOrDefault()?.NOMBRE ?? "Cliente no encontrado";
         }
 
         private Label ObtenerLabelCliente(string nombre)
@@ -177,7 +194,7 @@ namespace DISMOGT_REPORTES
             {
                 Text = text,
                 FontAttributes = isHeader ? FontAttributes.Bold : FontAttributes.None,
-                FontSize = isHeader ? 14 : 12,
+                FontSize = isHeader ? 13 : 10,
                 HorizontalTextAlignment = TextAlignment.Center,
                 VerticalTextAlignment = TextAlignment.Center,
                 TextColor = Colors.White
