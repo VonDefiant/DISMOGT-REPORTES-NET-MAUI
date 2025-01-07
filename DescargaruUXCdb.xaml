@@ -26,9 +26,10 @@
             </StackLayout>
 
             <!-- Contenido: Botón -->
-            <StackLayout VerticalOptions="Start" HorizontalOptions="CenterAndExpand">
+            <StackLayout VerticalOptions="Start" HorizontalOptions="CenterAndExpand" Margin="0,50,0,0">
                 <Button Text="ACTUALIZAR DATOS" Clicked="DescargarArchivo_Clicked" TextColor="White" BackgroundColor="#F2B300"/>
             </StackLayout>
+
 
         </Grid>
     </ContentPage.Content>
