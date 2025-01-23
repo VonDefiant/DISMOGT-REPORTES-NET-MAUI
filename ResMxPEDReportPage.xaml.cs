@@ -93,7 +93,7 @@ namespace DISMOGT_REPORTES
             {
                 Text = text,
                 FontAttributes = isHeader ? FontAttributes.Bold : FontAttributes.None,
-                FontSize = isHeader ? 14 : 10, // Cambiar el tamaño de fuente si es encabezado
+                FontSize = isHeader ? 14 : 9, 
                 HorizontalTextAlignment = TextAlignment.Center,
                 VerticalTextAlignment = TextAlignment.Center,
                 TextColor = Colors.White

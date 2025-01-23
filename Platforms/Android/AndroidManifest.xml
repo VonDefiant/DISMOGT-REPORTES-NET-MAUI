@@ -1,6 +1,19 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-	<application android:allowBackup="true" android:icon="@mipmap/appicon" android:supportsRtl="true"></application>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionName="1.7">
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/appicon"
+        android:supportsRtl="true"
+        android:label="DISMOGT REPORTES">
+        <!-- Receptor para manejar reinicios del dispositivo -->
+        <receiver android:enabled="true" android:exported="true" android:name="com.shiny.ShinyBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+    </application>
+
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.INTERNET" />
 	<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
@@ -17,5 +30,11 @@
 	<uses-permission android:name="android.permission.MANAGE_DEVICE_POLICY_LOCATION" />
 	<uses-permission android:name="android.permission.MANAGE_DEVICE_POLICY_MOBILE_NETWORK" />
 	<uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
-	<uses-sdk android:minSdkVersion="33" android:targetSdkVersion="34" />
+	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+	<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+	<uses-permission android:name="android.permission.WAKE_LOCK" />
+	<!-- Especifica las versiones mínimas y objetivo del SDK -->
+    <uses-sdk android:minSdkVersion="33" android:targetSdkVersion="34" />
 </manifest>
+    

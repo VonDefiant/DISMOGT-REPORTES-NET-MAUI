@@ -86,9 +86,11 @@ namespace DISMOGT_REPORTES
                     var datosRutas = conn.Query<JornadaRutas>(consulta, fechaBuscada, fechaBuscada, letraDia, fechaBuscada, fechaBuscada, letraDia, fechaBuscada, fechaBuscada, letraDia, fechaBuscada);
 
 
-                    data = "";
+                     data = "";
                     foreach (var ruta in datosRutas)
                     {
+
+
                         data += $"\nFecha: {fechaBuscada}\n";
                         data += $"Día: {diaSemana}\n";
                         data += $"Ruta: {ruta.RUTA,-25}\n";
@@ -98,6 +100,8 @@ namespace DISMOGT_REPORTES
                         data += $"Clientes con venta: {cuentaClientes}\n";
                         data += $"Clientes visitados: {ruta.VisitasRealizadas} \n"; ;
                         data += $"\nEfectividad de ventas: {ruta.EfectividadVTA} \n";
+                        data += $"Dropsize: \n";
+
 
                         // Calcular la efectividad de visita 
                         double efectividadVisita = (double)ruta.VisitasRealizadas / ruta.ClientesRutero * 100;

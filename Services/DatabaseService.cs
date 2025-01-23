@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using SQLite;
+using System.IO;
 using DISMOGT_REPORTES.Models;
-using SQLite;
+using System;
 
-namespace DISMOGT_REPORTES.Services
+namespace DISMO_REPORTES.Services
 {
     public class DatabaseService
     {
@@ -28,9 +25,10 @@ namespace DISMOGT_REPORTES.Services
         {
             try
             {
-                // Verifica el path de la base de datos
-                var dbPath = "/storage/emulated/0/DISMOGTREPORTES/pending_locations.db";
+                // Obtiene el path de la base de datos utilizando el almacenamiento local de MAUI
+                var dbPath = Path.Combine(FileSystem.Current.AppDataDirectory, "DM.db");
 
+                // Inicializa la conexión SQLite y crea la tabla si no existe
                 _database = new SQLiteConnection(dbPath);
                 _database.CreateTable<PendingLocation>();
 
