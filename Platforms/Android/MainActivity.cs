@@ -156,17 +156,24 @@ public class MainActivity : MauiAppCompatActivity
 
     private void CreateAppFolder()
     {
-        // Ruta de la carpeta "DISMOGTREPORTES" en el almacenamiento externo
-        string appFolderPath = Path.Combine(Android.OS.Environment.ExternalStorageDirectory.AbsolutePath, "DISMOGTREPORTES");
+        try
+        {
+            string appFolderPath = Path.Combine(Android.OS.Environment.ExternalStorageDirectory.AbsolutePath, "DISMOGTREPORTES");
 
-        if (!Directory.Exists(appFolderPath))
-        {
-            Directory.CreateDirectory(appFolderPath);
-            Console.WriteLine("Carpeta DISMOGTREPORTES creada en almacenamiento externo.");
+            if (!Directory.Exists(appFolderPath))
+            {
+                Directory.CreateDirectory(appFolderPath);
+                Console.WriteLine($"✅ Carpeta creada en: {appFolderPath}");
+            }
+            else
+            {
+                Console.WriteLine($"📂 Carpeta ya existe en: {appFolderPath}");
+            }
         }
-        else
+        catch (Exception ex)
         {
-            Console.WriteLine("Carpeta DISMOGTREPORTES ya existe.");
+            Console.WriteLine($"❌ Error al crear la carpeta: {ex.Message}");
         }
     }
+
 }
