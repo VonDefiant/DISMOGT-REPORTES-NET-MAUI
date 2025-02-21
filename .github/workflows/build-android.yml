@@ -30,7 +30,7 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: 🔄 Reinstalar Workloads de MAUI (Asegura que los iconos se generen)
-        run: dotnet workload install
+        run: dotnet workload install maui-android  # ✅ Corrección aquí
 
       - name: 🔄 Restaurar dependencias
         run: dotnet restore
