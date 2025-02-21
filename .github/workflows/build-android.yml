@@ -3,61 +3,75 @@ name: 🚀 Build & Release .NET MAUI Android
 on:
   push:
     branches:
-      - main  # Se ejecuta cuando se suben cambios a la rama principal
+      - main
   pull_request:
     branches:
-      - main  # También se ejecuta en PRs a main
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build-android:
     name: 🏗️ Compilar y Generar APK
-    runs-on: ubuntu-latest  # Usa una máquina con Linux
-    
+    runs-on: ubuntu-latest
+
     steps:
       - name: 📥 Clonar el repositorio
         uses: actions/checkout@v3
 
+      - name: 🔄 Limpiar Workloads de MAUI
+        run: dotnet workload clean
+
       - name: 🔧 Instalar .NET y .NET MAUI
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '8.0.x'  # Asegúrate de usar la versión correcta
+          dotnet-version: '8.0.x'
+
+      - name: 🔄 Instalar Workloads de .NET MAUI
+        run: dotnet workload restore
 
       - name: 🔄 Restaurar dependencias
         run: dotnet restore
 
+      - name: 🔄 Forzar regeneración de imágenes
+        run: dotnet build -f net8.0-android -c Release --no-restore
+
       - name: 🔨 Compilar la aplicación para Android
         run: dotnet publish -f net8.0-android -c Release -o publish_output
 
-      - name: 📦 Empaquetar APK
+      - name: 📦 Empaquetar APK con nombre personalizado
         run: |
           cd publish_output
-          mv com.companyname.*.apk app-release.apk
+          VERSION=$(echo "v1.0.${{ github.run_number }}")
+          mv com.companyname.*.apk "DISMOGT_REPORTES_${VERSION}.apk"
 
       - name: 📤 Subir APK como artefacto
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: APK-Android
-          path: publish_output/app-release.apk
+          path: publish_output/DISMOGT_REPORTES_v1.0.${{ github.run_number }}.apk
 
   release:
     name: 🚀 Crear Release en GitHub
-    needs: build-android  # Se ejecuta solo si la compilación fue exitosa
+    needs: build-android
     runs-on: ubuntu-latest
 
     steps:
       - name: 📥 Descargar APK generado
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: APK-Android
-          path: apk_output
+          path: publish_output
 
       - name: 🚀 Crear una nueva release en GitHub
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.${{ github.run_number }}  # Genera una versión automática
+          tag_name: v1.0.${{ github.run_number }}
           name: "Versión 1.0.${{ github.run_number }}"
           draft: false
           prerelease: false
-          files: apk_output/app-release.apk
+          files: publish_output/DISMOGT_REPORTES_v1.0.${{ github.run_number }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
