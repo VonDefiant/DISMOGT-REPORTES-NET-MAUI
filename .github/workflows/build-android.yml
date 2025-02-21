@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # ✅ SOLUCIÓN: Permite crear releases y subir archivos
+  contents: write 
 
 jobs:
   build-android:
@@ -35,16 +35,17 @@ jobs:
       - name: 🔨 Compilar la aplicación para Android
         run: dotnet publish -f net8.0-android -c Release -o publish_output
 
-      - name: 📦 Empaquetar APK
+      - name: 📦 Empaquetar APK con nombre personalizado
         run: |
           cd publish_output
-          mv com.companyname.*.apk app-release.apk
+          VERSION=$(echo "v1.0.${{ github.run_number }}")  # Obtener la versión del release
+          mv com.companyname.*.apk "DISMOGT_REPORTES_${VERSION}.apk"
 
       - name: 📤 Subir APK como artefacto
         uses: actions/upload-artifact@v4
         with:
           name: APK-Android
-          path: publish_output/app-release.apk
+          path: publish_output/DISMOGT_REPORTES_v1.0.${{ github.run_number }}.apk
 
   release:
     name: 🚀 Crear Release en GitHub
@@ -56,7 +57,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: APK-Android
-          path: apk_output
+          path: publish_output
 
       - name: 🚀 Crear una nueva release en GitHub
         uses: softprops/action-gh-release@v1
@@ -65,6 +66,6 @@ jobs:
           name: "Versión 1.0.${{ github.run_number }}"
           draft: false
           prerelease: false
-          files: apk_output/app-release.apk
+          files: publish_output/DISMOGT_REPORTES_v1.0.${{ github.run_number }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
