@@ -3,10 +3,11 @@ name: 🚀 Build & Release .NET MAUI Android
 on:
   push:
     branches:
-      - main  # Se ejecuta cuando se suben cambios a la rama principal
+      - main  # Se ejecuta automáticamente cuando hay cambios en main
   pull_request:
     branches:
-      - main  # También se ejecuta en PRs a main
+      - main  # También en PRs hacia main
+  workflow_dispatch:  # Permite ejecución manual desde GitHub Actions
 
 jobs:
   build-android:
