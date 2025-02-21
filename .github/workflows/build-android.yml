@@ -1,0 +1,63 @@
+name: 🚀 Build & Release .NET MAUI Android
+
+on:
+  push:
+    branches:
+      - main  # Se ejecuta cuando se suben cambios a la rama principal
+  pull_request:
+    branches:
+      - main  # También se ejecuta en PRs a main
+
+jobs:
+  build-android:
+    name: 🏗️ Compilar y Generar APK
+    runs-on: ubuntu-latest  # Usa una máquina con Linux
+    
+    steps:
+      - name: 📥 Clonar el repositorio
+        uses: actions/checkout@v3
+
+      - name: 🔧 Instalar .NET y .NET MAUI
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'  # Asegúrate de usar la versión correcta
+
+      - name: 🔄 Restaurar dependencias
+        run: dotnet restore
+
+      - name: 🔨 Compilar la aplicación para Android
+        run: dotnet publish -f net8.0-android -c Release -o publish_output
+
+      - name: 📦 Empaquetar APK
+        run: |
+          cd publish_output
+          mv com.companyname.*.apk app-release.apk
+
+      - name: 📤 Subir APK como artefacto
+        uses: actions/upload-artifact@v3
+        with:
+          name: APK-Android
+          path: publish_output/app-release.apk
+
+  release:
+    name: 🚀 Crear Release en GitHub
+    needs: build-android  # Se ejecuta solo si la compilación fue exitosa
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Descargar APK generado
+        uses: actions/download-artifact@v3
+        with:
+          name: APK-Android
+          path: apk_output
+
+      - name: 🚀 Crear una nueva release en GitHub
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v1.0.${{ github.run_number }}  # Genera una versión automática
+          name: "Versión 1.0.${{ github.run_number }}"
+          draft: false
+          prerelease: false
+          files: apk_output/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
