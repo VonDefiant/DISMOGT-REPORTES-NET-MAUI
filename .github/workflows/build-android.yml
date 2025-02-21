@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # ✅ Permite crear releases y subir archivos
+  contents: write  
 
 jobs:
   build-android:
