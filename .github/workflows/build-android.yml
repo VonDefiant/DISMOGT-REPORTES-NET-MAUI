@@ -29,14 +29,11 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: 🔄 Instalar Workloads de MAUI
-        run: dotnet workload restore
+      - name: 🔄 Reinstalar Workloads de MAUI (Asegura que los iconos se generen)
+        run: dotnet workload install
 
       - name: 🔄 Restaurar dependencias
         run: dotnet restore
-
-      - name: 🔄 Forzar regeneración de imágenes
-        run: dotnet build -t:RunGenerateMauiAssets -c Release
 
       - name: 🔨 Compilar la aplicación para Android
         run: dotnet publish -f net8.0-android -c Release -o publish_output
