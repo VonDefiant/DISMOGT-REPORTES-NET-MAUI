@@ -35,7 +35,7 @@ jobs:
           mv com.companyname.*.apk app-release.apk
 
       - name: 📤 Subir APK como artefacto
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4  # ✅ ACTUALIZADO A v4
         with:
           name: APK-Android
           path: publish_output/app-release.apk
@@ -47,7 +47,7 @@ jobs:
 
     steps:
       - name: 📥 Descargar APK generado
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4  # ✅ ACTUALIZADO A v4
         with:
           name: APK-Android
           path: apk_output
