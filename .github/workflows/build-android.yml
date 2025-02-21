@@ -3,17 +3,17 @@ name: 🚀 Build & Release .NET MAUI Android
 on:
   push:
     branches:
-      - main  # Se ejecuta automáticamente cuando hay cambios en main
+      - main
   pull_request:
     branches:
-      - main  # También en PRs hacia main
-  workflow_dispatch:  # Permite ejecución manual desde GitHub Actions
+      - main
+  workflow_dispatch:
 
 jobs:
   build-android:
     name: 🏗️ Compilar y Generar APK
-    runs-on: ubuntu-latest  # Usa una máquina con Linux
-    
+    runs-on: ubuntu-latest
+
     steps:
       - name: 📥 Clonar el repositorio
         uses: actions/checkout@v3
@@ -21,7 +21,10 @@ jobs:
       - name: 🔧 Instalar .NET y .NET MAUI
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: '8.0.x'  # Asegúrate de usar la versión correcta
+          dotnet-version: '8.0.x'
+
+      - name: 🔄 Instalar Workloads de .NET MAUI
+        run: dotnet workload restore  # ✅ SOLUCIÓN
 
       - name: 🔄 Restaurar dependencias
         run: dotnet restore
@@ -35,19 +38,19 @@ jobs:
           mv com.companyname.*.apk app-release.apk
 
       - name: 📤 Subir APK como artefacto
-        uses: actions/upload-artifact@v4  # ✅ ACTUALIZADO A v4
+        uses: actions/upload-artifact@v4
         with:
           name: APK-Android
           path: publish_output/app-release.apk
 
   release:
     name: 🚀 Crear Release en GitHub
-    needs: build-android  # Se ejecuta solo si la compilación fue exitosa
+    needs: build-android
     runs-on: ubuntu-latest
 
     steps:
       - name: 📥 Descargar APK generado
-        uses: actions/download-artifact@v4  # ✅ ACTUALIZADO A v4
+        uses: actions/download-artifact@v4
         with:
           name: APK-Android
           path: apk_output
@@ -55,7 +58,7 @@ jobs:
       - name: 🚀 Crear una nueva release en GitHub
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.${{ github.run_number }}  # Genera una versión automática
+          tag_name: v1.0.${{ github.run_number }}
           name: "Versión 1.0.${{ github.run_number }}"
           draft: false
           prerelease: false
