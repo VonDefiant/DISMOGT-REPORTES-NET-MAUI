@@ -3,11 +3,12 @@ using System.IO;
 using DISMOGT_REPORTES.Models;
 using System;
 
-namespace DISMO_REPORTES.Services
+namespace DISMOGT_REPORTES.Services
 {
     public class DatabaseService
     {
         private static SQLiteConnection _database;
+        private static readonly object _dbLock = new object();
 
         public static SQLiteConnection Database
         {
@@ -25,19 +26,60 @@ namespace DISMO_REPORTES.Services
         {
             try
             {
-                // Obtiene el path de la base de datos utilizando el almacenamiento local de MAUI
-                var dbPath = Path.Combine(FileSystem.Current.AppDataDirectory, "DM.db");
+                lock (_dbLock)
+                {
+                    var dbPath = Path.Combine(FileSystem.Current.AppDataDirectory, "DM.db");
 
-                // Inicializa la conexión SQLite y crea la tabla si no existe
-                _database = new SQLiteConnection(dbPath);
-                _database.CreateTable<PendingLocation>();
+                    // Asegurar que el directorio de la BD existe
+                    Directory.CreateDirectory(Path.GetDirectoryName(dbPath));
 
-                Console.WriteLine("Base de datos inicializada y tabla PendingLocation creada.");
+                    // Inicializa la base de datos SQLite
+                    _database = new SQLiteConnection(dbPath);
+
+                    // Crea las tablas si no existen
+                    _database.CreateTable<PendingLocation>();
+                    _database.CreateTable<UniqueToken>();
+
+                    Console.WriteLine("Base de datos inicializada correctamente.");
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error al inicializar la base de datos: {ex.Message}");
             }
         }
+
+        public static string GetOrCreateUniqueToken()
+        {
+            try
+            {
+                lock (_dbLock)
+                {
+                    var tokenEntry = Database.Table<UniqueToken>().FirstOrDefault();
+
+                    if (tokenEntry == null)
+                    {
+                        string newToken = Guid.NewGuid().ToString();
+                        Database.Insert(new UniqueToken { Token = newToken });
+
+                        Console.WriteLine($"Token único generado: {newToken}");
+                        return newToken;
+                    }
+
+                    return tokenEntry.Token;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al obtener o crear el token único: {ex.Message}");
+                return string.Empty; // Retorna un valor seguro en caso de error
+            }
+        }
+    }
+
+    public class UniqueToken
+    {
+        [PrimaryKey]
+        public string Token { get; set; }
     }
 }
