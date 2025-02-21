@@ -9,6 +9,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: write  # ✅ SOLUCIÓN: Permite crear releases y subir archivos
+
 jobs:
   build-android:
     name: 🏗️ Compilar y Generar APK
@@ -24,7 +27,7 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: 🔄 Instalar Workloads de .NET MAUI
-        run: dotnet workload restore  # ✅ SOLUCIÓN
+        run: dotnet workload restore
 
       - name: 🔄 Restaurar dependencias
         run: dotnet restore
