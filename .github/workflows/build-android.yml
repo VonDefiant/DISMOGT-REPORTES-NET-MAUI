@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write  
 
 jobs:
   build-android:
@@ -20,9 +20,6 @@ jobs:
     steps:
       - name: 📥 Clonar el repositorio
         uses: actions/checkout@v3
-
-      - name: 🔄 Limpiar Workloads de MAUI
-        run: dotnet workload clean
 
       - name: 🔧 Instalar .NET y .NET MAUI
         uses: actions/setup-dotnet@v3
@@ -35,16 +32,13 @@ jobs:
       - name: 🔄 Restaurar dependencias
         run: dotnet restore
 
-      - name: 🔄 Forzar regeneración de imágenes
-        run: dotnet build -f net8.0-android -c Release --no-restore
-
       - name: 🔨 Compilar la aplicación para Android
         run: dotnet publish -f net8.0-android -c Release -o publish_output
 
       - name: 📦 Empaquetar APK con nombre personalizado
         run: |
           cd publish_output
-          VERSION=$(echo "v1.0.${{ github.run_number }}")
+          VERSION=$(echo "v1.0.${{ github.run_number }}")  # Obtener la versión del release
           mv com.companyname.*.apk "DISMOGT_REPORTES_${VERSION}.apk"
 
       - name: 📤 Subir APK como artefacto
