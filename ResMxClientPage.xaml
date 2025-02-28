@@ -32,7 +32,7 @@
         <ListView x:Name="ReportListView"
                   ItemsSource="{Binding ReportData}"
                   HasUnevenRows="True"
-                  BackgroundColor="Transparent">
+                  BackgroundColor="Transparent">    
             <ListView.ItemTemplate>
                 <DataTemplate>
                     <ViewCell>
