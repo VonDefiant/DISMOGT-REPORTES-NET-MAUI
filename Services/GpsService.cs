@@ -63,7 +63,7 @@ namespace DISMO_REPORTES.Services
             {
                 latitude = location.Latitude,
                 longitude = location.Longitude,
-                timestamp = DateTime.UtcNow.ToString("o"), // Formato ISO 8601
+                timestamp = DateTime.UtcNow.ToString("o"), 
                 isSuspicious = false,
                 id_ruta = idRuta,
                 battery = Battery.Default.ChargeLevel * 100
@@ -71,7 +71,7 @@ namespace DISMO_REPORTES.Services
 
             var jsonContent = JsonConvert.SerializeObject(locationData);
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-            content.Headers.Add("Device-ID", deviceId); // Enviar GUID en el header
+            content.Headers.Add("Device-ID", deviceId); 
 
             var url = "https://dismo-gps-8df3af4b987d.herokuapp.com/coordinates";
 
@@ -117,18 +117,18 @@ namespace DISMO_REPORTES.Services
                     {
                         Latitude = location.Latitude,
                         Longitude = location.Longitude,
-                        Timestamp = DateTime.UtcNow.ToString("o"), // Aseguramos formato ISO 8601
+                        Timestamp = DateTime.UtcNow.ToString("o"), 
                         IsSuspicious = false,
                         IdRuta = idRuta,
                         BatteryLevel = Battery.Default.ChargeLevel * 100
                     };
 
                     DatabaseService.Database.Insert(pendingLocation);
-                    Console.WriteLine("✅ Ubicación guardada localmente con Timestamp ISO8601.");
+                    Console.WriteLine(" Ubicación guardada localmente con Timestamp ISO8601.");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"❌ Error guardando localmente: {ex}");
+                    Console.WriteLine($" Error guardando localmente: {ex}");
                 }
             }
         }
@@ -137,7 +137,7 @@ namespace DISMO_REPORTES.Services
         {
             try
             {
-                var deviceId = DeviceIdentifier.GetOrCreateUniqueId(); // Obtiene el GUID del dispositivo
+                var deviceId = DeviceIdentifier.GetOrCreateUniqueId(); 
                 var pendingLocations = DatabaseService.Database.Table<PendingLocation>().ToList();
 
                 if (pendingLocations.Count == 0) return;
@@ -159,7 +159,7 @@ namespace DISMO_REPORTES.Services
 
                     var jsonContent = JsonConvert.SerializeObject(batchData);
                     var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-                    content.Headers.Add("Device-ID", deviceId); // Enviar GUID en cada batch
+                    content.Headers.Add("Device-ID", deviceId); 
 
                     var url = "https://dismo-gps-8df3af4b987d.herokuapp.com/coordinates";
 
@@ -172,19 +172,19 @@ namespace DISMO_REPORTES.Services
                             {
                                 DatabaseService.Database.Delete(location);
                             }
-                            Console.WriteLine("✅ Lote enviado exitosamente.");
+                            Console.WriteLine("Lote enviado exitosamente.");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"❌ Error enviando lote: {ex}");
+                        Console.WriteLine($" Error enviando lote: {ex}");
                         break;
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Error general en envío de pendientes: {ex}");
+                Console.WriteLine($"Error general en envío de pendientes: {ex}");
             }
         }
 
@@ -200,7 +200,7 @@ namespace DISMO_REPORTES.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Error obteniendo ubicación: {ex}");
+                Console.WriteLine($" Error obteniendo ubicación: {ex}");
                 return null;
             }
         }

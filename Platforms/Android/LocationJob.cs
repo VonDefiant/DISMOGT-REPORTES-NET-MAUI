@@ -27,71 +27,47 @@ namespace DISMO_REPORTES.Services
         {
             Console.WriteLine("🛰 LocationJob iniciado.");
 
-            // Enviar notificación al inicio del servicio
-            await NotifyServiceStartedAsync();
+            // Notificación de inicio del servicio
+            TrySendNotificationAsync("📢 DISMOGT REPORTES", "Cada no que recibes te acerca más a un sí.");
 
-            if (cancellationToken.IsCancellationRequested)
-            {
-                Console.WriteLine("⏹ LocationJob cancelado antes de comenzar.");
-                return;
-            }
+            if (IsCancelled(cancellationToken, "LocationJob cancelado antes de comenzar.")) return;
 
             try
             {
                 // Obtener la ubicación actual
-                var location = await _gpsService.GetLocationAsync();
-                if (location == null)
-                {
-                    Console.WriteLine("⚠ No se pudo obtener la ubicación.");
-                    return;
-                }
+                var location = await GetLocationSafeAsync();
+                if (location == null) return;
 
                 Console.WriteLine($"📍 Ubicación obtenida: Latitud={location.Latitude}, Longitud={location.Longitude}");
 
-                // Verificar si se ha cancelado antes de proceder
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    Console.WriteLine("⏹ LocationJob cancelado antes de enviar la ubicación.");
-                    return;
-                }
+                if (IsCancelled(cancellationToken, "LocationJob cancelado antes de enviar la ubicación.")) return;
 
                 // Intentar enviar la ubicación al servidor
                 await TrySendLocationAsync(location, cancellationToken);
 
-                // Verificar cancelación antes de enviar notificación
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    Console.WriteLine("⏹ LocationJob cancelado antes de enviar la notificación.");
-                    return;
-                }
+                if (IsCancelled(cancellationToken, "LocationJob cancelado antes de enviar la notificación.")) return;
 
-                // Mostrar notificación al usuario
-                await TrySendNotificationAsync();
+                // Notificación de confirmación al usuario
+                TrySendNotificationAsync("💡 Da lo mejor de ti", "Recuerda no somos mejores que nadie, simplemente somos diferentes.");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error en LocationJob: {Message}", ex.Message);
-                Console.WriteLine($"❌ Error en LocationJob: {ex.Message}\n{ex.StackTrace}");
+                LogError(ex, "Error en LocationJob");
             }
 
-            Console.WriteLine("✅ LocationJob finalizado.");
+            Console.WriteLine(" LocationJob finalizado.");
         }
 
-        private async Task NotifyServiceStartedAsync()
+        private async Task<Location> GetLocationSafeAsync()
         {
             try
             {
-                await _notificationManager.Send(new Notification
-                {
-                    Title = "📢 DISMOGT REPORTES",
-                    Message = "Cada no que recibes te acerca más a un sí."
-                });
-                Console.WriteLine("🔔 Notificación de inicio de servicio enviada correctamente.");
+                return await _gpsService.GetLocationAsync();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error al enviar la notificación de inicio.");
-                Console.WriteLine($"❌ Error al enviar la notificación de inicio: {ex.Message}");
+                LogError(ex, "Error obteniendo la ubicación");
+                return null;
             }
         }
 
@@ -99,38 +75,53 @@ namespace DISMO_REPORTES.Services
         {
             try
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    Console.WriteLine("⏹ Envío de ubicación cancelado antes de comenzar.");
-                    return;
-                }
+                if (IsCancelled(cancellationToken, "⏹ Envío de ubicación cancelado antes de comenzar.")) return;
 
                 await _gpsService.SendLocationToServerAsync(location, AppConfig.IdRuta);
                 Console.WriteLine("📡 Ubicación enviada correctamente.");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Error al enviar la ubicación al servidor.");
-                Console.WriteLine($"❌ Error al enviar la ubicación al servidor: {ex.Message}\n{ex.StackTrace}");
+                LogError(ex, "Error al enviar la ubicación al servidor");
             }
         }
 
-        private async Task TrySendNotificationAsync()
+        private void TrySendNotificationAsync(string title, string message)
         {
-            try
+            Task.Run(async () =>
             {
-                await _notificationManager.Send(new Notification
+                try
                 {
-                    Title = "💡 Da lo mejor de ti",
-                    Message = "Recuerda no somos mejores que nadie, simplemente somos diferentes."
-                });
-                Console.WriteLine("🔔 Notificación enviada correctamente.");
-            }
-            catch (Exception ex)
+                    await _notificationManager.Send(new Notification
+                    {
+                        Title = title,
+                        Message = message
+                    });
+                    Console.WriteLine("🔔 Notificación enviada correctamente.");
+                }
+                catch (Exception ex)
+                {
+                    LogError(ex, "Error al enviar la notificación");
+                }
+            });
+        }
+
+        private bool IsCancelled(CancellationToken token, string message)
+        {
+            if (token.IsCancellationRequested)
             {
-                _logger.LogError(ex, "❌ Error al enviar la notificación.");
-                Console.WriteLine($"❌ Error al enviar la notificación: {ex.Message}\n{ex.StackTrace}");
+                Console.WriteLine($"⏹ {message}");
+                return true;
             }
+            return false;
+        }
+
+        private void LogError(Exception ex, string message)
+        {
+            _logger.LogError(ex, $"❌ {message}: {ex.Message}");
+#if DEBUG
+            Console.WriteLine($"❌ {message}: {ex.Message}\n{ex.StackTrace}");
+#endif
         }
     }
 }

@@ -1,22 +1,25 @@
 ﻿using Microsoft.Maui.Storage;
+using System;
 
 namespace DISMOGT_REPORTES.Services
 {
     public static class DeviceIdentifier
     {
         private const string Key = "device_unique_id";
-        public static string GetOrCreateUniqueId()
+
+        private static readonly Lazy<string> _deviceId = new Lazy<string>(() =>
         {
-            if (Preferences.ContainsKey(Key))
+            var existingId = Preferences.Get(Key, null);
+            if (!string.IsNullOrEmpty(existingId))
             {
-                return Preferences.Get(Key, "ID_NO_DISPONIBLE");
+                return existingId;
             }
-            else
-            {
-                var newId = Guid.NewGuid().ToString();
-                Preferences.Set(Key, newId);
-                return newId;
-            }
-        }
+
+            var newId = Guid.NewGuid().ToString();
+            Preferences.Set(Key, newId);
+            return newId;
+        });
+
+        public static string GetOrCreateUniqueId() => _deviceId.Value;
     }
 }

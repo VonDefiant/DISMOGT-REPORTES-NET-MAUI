@@ -55,14 +55,14 @@ namespace DISMOGT_REPORTES.Services
             {
                 lock (_dbLock)
                 {
-                    var tokenEntry = Database.Table<UniqueToken>().FirstOrDefault();
+                    var tokenEntry = Database.Find<UniqueToken>("Token");
 
                     if (tokenEntry == null)
                     {
                         string newToken = Guid.NewGuid().ToString();
                         Database.Insert(new UniqueToken { Token = newToken });
 
-                        Console.WriteLine($"Token único generado: {newToken}");
+                        Console.WriteLine($" Token único generado: {newToken}");
                         return newToken;
                     }
 
@@ -71,10 +71,11 @@ namespace DISMOGT_REPORTES.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error al obtener o crear el token único: {ex.Message}");
-                return string.Empty; // Retorna un valor seguro en caso de error
+                Console.WriteLine($" Error al obtener o crear el token único: {ex.Message}");
+                return string.Empty;
             }
         }
+
     }
 
     public class UniqueToken

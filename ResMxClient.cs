@@ -1,79 +1,88 @@
-using System;
+Ôªøusing System;
 using System.Collections.Generic;
 using System.IO;
 using SQLite;
 
-namespace DISMOGT_REPORTES 
+namespace DISMOGT_REPORTES
 {
     public class ResMxClient
     {
-        private string dbPath;
+        private readonly string dbPath;
 
         public ResMxClient(string databasePath)
         {
             dbPath = databasePath;
         }
 
-        public List<PedidoReportData> ObtenerDatos(string mfecha, string companiadm)
+        public List<PedidoReportData> ObtenerDatos(string mfecha, string clientebuscado)
         {
             try
             {
-                string path = dbPath;
-                string fechaBuscada = mfecha;
-                string clientebuscado = "F";
-
-                if (!File.Exists(path))
+                if (!File.Exists(dbPath))
                 {
-                    throw new FileNotFoundException($"No se encontrÛ la base de datos en la ruta especificada: {path}");
+                    throw new FileNotFoundException($"No se encontr√≥ la base de datos en la ruta especificada: {dbPath}");
                 }
 
-                using (SQLiteConnection conn = new SQLiteConnection(path))
+                using (SQLiteConnection conn = new SQLiteConnection(dbPath))
                 {
-                    conn.CreateTable<PedidoReportData>(); // Asegurar que la tabla est· creada
+                    conn.CreateTable<PedidoReportData>();
 
-                    var datosConsulta = RealizarConsulta(conn, fechaBuscada, clientebuscado);
-                    return datosConsulta;
+                    Console.WriteLine($" Ejecutando consulta con Cliente: {clientebuscado} y Fecha: {mfecha}");
+
+                    return RealizarConsulta(conn, mfecha, clientebuscado);
                 }
             }
             catch (Exception e)
             {
-                // Manejo de errores
-                Console.WriteLine($"Error: {e.Message}");
+                Console.WriteLine($" Error en ObtenerDatos: {e.Message}");
                 return new List<PedidoReportData>();
             }
         }
 
         public List<PedidoReportData> RealizarConsulta(SQLiteConnection conn, string fechaBuscada, string clientebuscado)
         {
-            string consulta = @"
-                SELECT 
-                    ENC.NUM_PED AS NUM_PED,
-                    DET.COD_ART AS ARTICULO,
-                    ART.DES_ART AS DESCRIPCION,
-                    (DET.CNT_MAX + (DET.CNT_MIN * 0.1)) AS UNIDADES,
-                    'Q ' || ROUND(SUM((DET.MON_TOT - DET.MON_DSC) * 1.12), 2) AS VENTA,
-                    ENC.COD_CLT,
-                    CLIE.NOM_CLT AS NOMBRE 
-                FROM 
-                    ERPADMIN_ALFAC_ENC_PED ENC 
-                JOIN 
-                    ERPADMIN_CLIENTE CLIE ON ENC.COD_CLT = CLIE.COD_CLT 
-                JOIN 
-                    ERPADMIN_ALFAC_DET_PED DET ON ENC.NUM_PED = DET.NUM_PED 
-                JOIN 
-                    ERPADMIN_ARTICULO ART ON DET.COD_ART = ART.COD_ART 
-                WHERE
-                    ENC.COD_CLT LIKE ? ||  '%'
-                    AND ESTADO <> 'C'
-                    AND FEC_PED LIKE ? || '%'
-                GROUP BY 
-                    ENC.NUM_PED, FEC_PED, DET.COD_ART, ART.DES_ART, UNIDADES, ENC.COD_CLT, CLIE.NOM_CLT
-                ORDER BY 
-                    FEC_PED DESC, ENC.NUM_PED DESC, ARTICULO;
-            ";
+            try
+            {
+                string consulta = @"
+                    SELECT 
+                        ENC.NUM_PED AS NUM_PED,
+                        DET.COD_ART AS ARTICULO,
+                        ART.DES_ART AS DESCRIPCION,
+                        (DET.CNT_MAX + (DET.CNT_MIN * 0.1)) AS UNIDADES,
+                        'Q ' || ROUND(SUM((DET.MON_TOT - DET.MON_DSC) * 1.12), 2) AS VENTA,
+                        ENC.COD_CLT,
+                        CLIE.NOM_CLT AS NOMBRE 
+                    FROM 
+                        ERPADMIN_ALFAC_ENC_PED ENC 
+                    JOIN 
+                        ERPADMIN_CLIENTE CLIE ON ENC.COD_CLT = CLIE.COD_CLT 
+                    JOIN 
+                        ERPADMIN_ALFAC_DET_PED DET ON ENC.NUM_PED = DET.NUM_PED 
+                    JOIN 
+                        ERPADMIN_ARTICULO ART ON DET.COD_ART = ART.COD_ART 
+                    WHERE
+                        ENC.COD_CLT = ? 
+                        AND ESTADO <> 'C'
+                        AND FEC_PED LIKE ? || '%'
+                    GROUP BY 
+                        ENC.NUM_PED, FEC_PED, DET.COD_ART, ART.DES_ART, UNIDADES, ENC.COD_CLT, CLIE.NOM_CLT
+                    ORDER BY 
+                        FEC_PED DESC, ENC.NUM_PED DESC, ARTICULO;
+                ";
 
-            var datosConsulta = conn.Query<PedidoReportData>(consulta, clientebuscado, fechaBuscada);
-            return datosConsulta;
+                Console.WriteLine($" Par√°metros enviados - Cliente: {clientebuscado}, Fecha: {fechaBuscada}");
+
+                var datosConsulta = conn.Query<PedidoReportData>(consulta, clientebuscado, fechaBuscada);
+
+                Console.WriteLine($" Registros devueltos por la consulta: {datosConsulta.Count}");
+
+                return datosConsulta;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($" Error en RealizarConsulta: {e.Message}");
+                return new List<PedidoReportData>();
+            }
         }
     }
 
