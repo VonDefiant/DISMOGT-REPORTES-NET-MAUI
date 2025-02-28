@@ -63,7 +63,7 @@ namespace DISMO_REPORTES.Services
             {
                 latitude = location.Latitude,
                 longitude = location.Longitude,
-                timestamp = DateTime.UtcNow.ToString("o"), 
+                timestamp = DateTime.UtcNow,
                 isSuspicious = false,
                 id_ruta = idRuta,
                 battery = Battery.Default.ChargeLevel * 100
@@ -117,7 +117,7 @@ namespace DISMO_REPORTES.Services
                     {
                         Latitude = location.Latitude,
                         Longitude = location.Longitude,
-                        Timestamp = DateTime.UtcNow.ToString("o"), 
+                        Timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fffffK"),
                         IsSuspicious = false,
                         IdRuta = idRuta,
                         BatteryLevel = Battery.Default.ChargeLevel * 100
