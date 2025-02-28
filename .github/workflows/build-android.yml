@@ -27,25 +27,32 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: 🔄 Instalar Workloads de .NET MAUI
-        run: dotnet workload restore
+        run: dotnet workload install maui
 
       - name: 🔄 Restaurar dependencias
         run: dotnet restore
 
       - name: 🔨 Compilar la aplicación para Android
-        run: dotnet publish -f net8.0-android -c Release -o publish_output
+        run: dotnet build -f net8.0-android -c Release
 
-      - name: 📦 Empaquetar APK con nombre personalizado
+      - name: 📜 Listar archivos generados
+        run: ls -R
+
+      - name: 🔍 Buscar el APK generado
         run: |
-          cd publish_output
-          VERSION=$(echo "v1.0.${{ github.run_number }}")  # Obtener la versión del release
-          mv com.companyname.*.apk "DISMOGT_REPORTES_${VERSION}.apk"
+          APK_PATH=$(find . -name "*.apk" | head -n 1)
+          echo "APK_PATH=${APK_PATH}" >> $GITHUB_ENV
+
+      - name: 📦 Renombrar y mover APK
+        run: |
+          VERSION="v1.0.${{ github.run_number }}"
+          mv $APK_PATH "DISMOGT_REPORTES_${VERSION}.apk"
 
       - name: 📤 Subir APK como artefacto
         uses: actions/upload-artifact@v4
         with:
           name: APK-Android
-          path: publish_output/DISMOGT_REPORTES_v1.0.${{ github.run_number }}.apk
+          path: DISMOGT_REPORTES_v1.0.${{ github.run_number }}.apk
 
   release:
     name: 🚀 Crear Release en GitHub
@@ -57,7 +64,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: APK-Android
-          path: publish_output
+          path: .
 
       - name: 🚀 Crear una nueva release en GitHub
         uses: softprops/action-gh-release@v1
@@ -66,6 +73,6 @@ jobs:
           name: "Versión 1.0.${{ github.run_number }}"
           draft: false
           prerelease: false
-          files: publish_output/DISMOGT_REPORTES_v1.0.${{ github.run_number }}.apk
+          files: DISMOGT_REPORTES_v1.0.${{ github.run_number }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
