@@ -2,6 +2,7 @@
 using System.IO;
 using Android.OS; // Asegura que este using esté presente
 
+
 namespace DISMO_REPORTES.Services
 {
     public static class AppConfig
