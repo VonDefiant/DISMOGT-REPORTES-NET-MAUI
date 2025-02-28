@@ -1,6 +1,7 @@
-using SQLite;
+ï»¿using SQLite;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
 
@@ -10,21 +11,23 @@ namespace DISMOGT_REPORTES
     {
         private readonly List<PedidoReportData> _reportData;
         private readonly string _fechaBuscada;
+        private readonly string _rutaSeleccionada;
         private readonly SQLiteConnection _conn;
         private readonly ResMxClient _resMxClient;
         private readonly Grid reportGrid;
-        private readonly Entry productoBuscadoEntry;
-        private readonly string _rutaSeleccionada;
-        private Label labelCliente;
+        private readonly Picker clientePicker;
+        private List<ClienteItem> _clientesDisponibles = new List<ClienteItem>();
 
         public ResMxClientPage(List<PedidoReportData> reportData, string fechaBuscada, SQLiteConnection conn, string rutaSeleccionada)
         {
             InitializeComponent();
             _reportData = reportData;
             _fechaBuscada = fechaBuscada;
+            _rutaSeleccionada = rutaSeleccionada;
             _conn = conn;
             _resMxClient = new ResMxClient(conn.DatabasePath);
-            _rutaSeleccionada = rutaSeleccionada;
+
+            Console.WriteLine($"ResMxClientPage - Fecha: {_fechaBuscada}, Ruta Seleccionada: {_rutaSeleccionada}");
 
             // Configurar Grid
             reportGrid = new Grid
@@ -40,16 +43,15 @@ namespace DISMOGT_REPORTES
                 }
             };
 
-            // Entrada para buscar cliente
-            productoBuscadoEntry = new Entry
+            // Picker para seleccionar cliente
+            clientePicker = new Picker
             {
-                Placeholder = "Ingrese el código del cliente",
-                TextColor = Colors.White,
-                PlaceholderColor = Colors.White
+                Title = "Seleccione un Cliente",
+                TextColor = Colors.White
             };
-            productoBuscadoEntry.Completed += OnClienteBuscadoEntryCompleted;
+            clientePicker.SelectedIndexChanged += OnClienteSeleccionado;
 
-            labelCliente = ObtenerLabelCliente(_reportData.FirstOrDefault()?.NOMBRE);
+            CargarClientes();
 
             var stackLayout = new VerticalStackLayout
             {
@@ -64,77 +66,109 @@ namespace DISMOGT_REPORTES
                         FontSize = 21,
                         TextColor = Colors.White
                     },
-                    productoBuscadoEntry,
-                    labelCliente,
+                    clientePicker,
                     reportGrid
                 }
             };
 
-            Content = new ScrollView
-            {
-                Content = stackLayout
-            };
+            Content = new ScrollView { Content = stackLayout };
 
             InitializePage();
         }
 
+        private void CargarClientes()
+        {
+            try
+            {
+                string query = @"
+                SELECT DISTINCT PED.COD_CLT AS Codigo, CLIE.NOM_CLT AS Nombre
+                FROM ERPADMIN_ALFAC_ENC_PED PED
+                JOIN ERPADMIN_CLIENTE CLIE ON PED.COD_CLT = CLIE.COD_CLT
+                WHERE FEC_PED LIKE ? || '%'
+                AND ESTADO <> 'C' 
+                AND TIP_DOC = '1'";
+
+                _clientesDisponibles = _conn.Query<ClienteItem>(query, _fechaBuscada);
+
+                clientePicker.Items.Clear();
+
+                foreach (var cliente in _clientesDisponibles)
+                {
+                    Console.WriteLine($"Cliente cargado: {cliente.Codigo} - {cliente.Nombre}");
+                    clientePicker.Items.Add(cliente.ToString());
+                }
+
+                Console.WriteLine($"Total clientes cargados: {_clientesDisponibles.Count}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al cargar los clientes con venta: {ex.Message}");
+            }
+        }
+        //BACKUP 28-02-2025
+        private void OnClienteSeleccionado(object sender, EventArgs e)
+        {
+            if (clientePicker.SelectedIndex == -1)
+                return;
+
+            var clienteSeleccionado = _clientesDisponibles[clientePicker.SelectedIndex];
+
+            if (clienteSeleccionado == null)
+            {
+                Console.WriteLine("Error: Cliente seleccionado es nulo.");
+                return;
+            }
+
+            Console.WriteLine($"Cliente seleccionado: {clienteSeleccionado.Codigo} - {clienteSeleccionado.Nombre}");
+
+            string codigoCliente = clienteSeleccionado.Codigo;
+
+            LimpiarDatosEnGrid();
+
+            var datosConsulta = _resMxClient.ObtenerDatos(_fechaBuscada, codigoCliente);
+
+            Console.WriteLine($"Registros encontrados: {datosConsulta.Count}");
+
+            if (datosConsulta.Count == 0)
+            {
+                Console.WriteLine($"No se encontraron datos para el cliente: {codigoCliente} con fecha: {_fechaBuscada}");
+            }
+
+            ActualizarLista(datosConsulta);
+        }
+
         private void InitializePage()
         {
-            // Encabezados
             reportGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             AddToGrid(reportGrid, CreateLabel("ARTICULO", true), 0, 0);
             AddToGrid(reportGrid, CreateLabel("DESCRIPCION", true), 1, 0);
             AddToGrid(reportGrid, CreateLabel("UNIDADES", true), 2, 0);
             AddToGrid(reportGrid, CreateLabel("VENTAS", true), 3, 0);
-
-            InicializarDatosEnGrid();
         }
 
-        private void InicializarDatosEnGrid()
+        private void ActualizarLista(List<PedidoReportData> datosConsulta)
         {
             double totalVenta = 0;
-
-            for (int i = 0; i < _reportData.Count; i++)
+            for (int i = 0; i < datosConsulta.Count; i++)
             {
                 reportGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                AgregarEtiquetasAlGrid(_reportData[i], i + 1);
+                AgregarEtiquetasAlGrid(datosConsulta[i], i + 1);
 
-                if (double.TryParse(_reportData[i].VENTA.Replace("Q", ""), out double venta))
+                if (double.TryParse(datosConsulta[i].VENTA.Replace("Q", ""), out double venta))
                 {
                     totalVenta += venta;
                 }
             }
-
-            // Agregar fila de totales
-            AgregarFilaTotales("VENTA TOTAL", totalVenta, _reportData.Count + 1);
-        }
-
-        private void AgregarEtiquetasAlGrid(PedidoReportData data, int rowIndex)
-        {
-            AddToGrid(reportGrid, CreateLabel(data.ARTICULO), 0, rowIndex);
-            AddToGrid(reportGrid, CreateLabel(data.DESCRIPCION), 1, rowIndex);
-            AddToGrid(reportGrid, CreateLabel(data.UNIDADES.ToString()), 2, rowIndex);
-            AddToGrid(reportGrid, CreateLabel(data.VENTA), 3, rowIndex);
-        }
-
-        private void AgregarFilaTotales(string label, double total, int row)
-        {
-            reportGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-            AddToGrid(reportGrid, CreateLabel(label, true), 1, row);
-            AddToGrid(reportGrid, CreateLabel($"Q {total:F2}", true), 3, row);
-        }
-
-        private void OnClienteBuscadoEntryCompleted(object sender, EventArgs e)
-        {
-            ActualizarDatos();
+            AgregarFilaTotales("VENTA TOTAL", totalVenta, datosConsulta.Count + 1);
         }
 
         private void LimpiarDatosEnGrid()
         {
             var childrenToRemove = new List<View>();
+
             foreach (var child in reportGrid.Children)
             {
-                if (child is View view && Grid.GetRow(view) > 0)
+                if (child is View view && Grid.GetRow(view) > 0) 
                 {
                     childrenToRemove.Add(view);
                 }
@@ -151,41 +185,19 @@ namespace DISMOGT_REPORTES
             }
         }
 
-        private void ActualizarDatos()
+        private void AgregarEtiquetasAlGrid(PedidoReportData data, int rowIndex)
         {
-            string clienteBuscado = productoBuscadoEntry.Text;
-            var datosConsulta = _resMxClient.RealizarConsulta(_conn, _fechaBuscada, clienteBuscado);
-
-            LimpiarDatosEnGrid();
-
-            double totalVenta = 0;
-
-            for (int i = 0; i < datosConsulta.Count; i++)
-            {
-                reportGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-                AgregarEtiquetasAlGrid(datosConsulta[i], i + 1);
-
-                if (double.TryParse(datosConsulta[i].VENTA.Replace("Q", ""), out double venta))
-                {
-                    totalVenta += venta;
-                }
-            }
-
-            AgregarFilaTotales("VENTA TOTAL", totalVenta, datosConsulta.Count + 1);
-
-            labelCliente.Text = datosConsulta.FirstOrDefault()?.NOMBRE ?? "Cliente no encontrado";
+            AddToGrid(reportGrid, CreateLabel(data.ARTICULO), 0, rowIndex);
+            AddToGrid(reportGrid, CreateLabel(data.DESCRIPCION), 1, rowIndex);
+            AddToGrid(reportGrid, CreateLabel(data.UNIDADES.ToString()), 2, rowIndex);
+            AddToGrid(reportGrid, CreateLabel(data.VENTA), 3, rowIndex);
         }
 
-        private Label ObtenerLabelCliente(string nombre)
+        private void AgregarFilaTotales(string label, double total, int row)
         {
-            return new Label
-            {
-                Text = nombre ?? string.Empty,
-                FontAttributes = FontAttributes.Bold,
-                FontSize = 16,
-                TextColor = Colors.White,
-                HorizontalTextAlignment = TextAlignment.Center
-            };
+            reportGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            AddToGrid(reportGrid, CreateLabel(label, true), 1, row);
+            AddToGrid(reportGrid, CreateLabel($"Q {total:F2}", true), 3, row);
         }
 
         private Label CreateLabel(string text, bool isHeader = false)
@@ -206,6 +218,17 @@ namespace DISMOGT_REPORTES
             Grid.SetColumn(view, column);
             Grid.SetRow(view, row);
             grid.Children.Add(view);
+        }
+    }
+
+    public class ClienteItem
+    {
+        public string Codigo { get; set; }
+        public string Nombre { get; set; }
+
+        public override string ToString()
+        {
+            return $"{Codigo} - {Nombre}";
         }
     }
 }
