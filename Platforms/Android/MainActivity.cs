@@ -10,6 +10,7 @@ using Android.Runtime;
 using Android.Widget;
 using AndroidX.Core.Content;
 using AndroidX.Core.App;
+using DISMOGT_REPORTES.Services;
 
 namespace DISMOGT_REPORTES;
 
@@ -36,10 +37,13 @@ namespace DISMOGT_REPORTES;
 public class MainActivity : MauiAppCompatActivity
 {
     private const int PHONE_STATE_PERMISSION_CODE = 1003;
+    private const int INSTALL_PERMISSION_REQUEST_CODE = 1004;
 
     protected override async void OnCreate(Bundle savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
+
+        Console.WriteLine("🚀 Aplicación iniciada...");
 
         Platform.Init(this, savedInstanceState);
         CreateNotificationChannel();
@@ -47,6 +51,12 @@ public class MainActivity : MauiAppCompatActivity
         CreateAppFolder();
         RequestIgnoreBatteryOptimizations();
         CheckPhoneStatePermission();
+        RequestInstallPackagesPermission();
+
+        // 🔍 Verificar actualizaciones en GitHub
+        Console.WriteLine("🔍 Buscando actualizaciones...");
+        var updateService = new UpdateService();
+        await updateService.CheckForUpdate();
     }
 
     private void CheckPhoneStatePermission()
@@ -67,6 +77,34 @@ public class MainActivity : MauiAppCompatActivity
 #endif
     }
 
+    private void RequestInstallPackagesPermission()
+    {
+        if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
+        {
+            if (!PackageManager.CanRequestPackageInstalls())
+            {
+                Console.WriteLine("⚠️ No tiene permiso para instalar paquetes. Solicitando...");
+
+                var intent = new Intent(Android.Provider.Settings.ActionManageUnknownAppSources);
+                intent.SetData(Android.Net.Uri.Parse("package:" + PackageName));
+
+                StartActivityForResult(intent, INSTALL_PERMISSION_REQUEST_CODE);
+            }
+            else
+            {
+                Console.WriteLine("✅ Permiso para instalar paquetes concedido.");
+            }
+        }
+
+        // ⚠️ Android 14 requiere una confirmación manual adicional
+        if (Build.VERSION.SdkInt >= (BuildVersionCodes)34) // Android 14 (API 34)
+
+        {
+            Console.WriteLine("⚠️ En Android 14, el usuario debe permitir instalaciones desde fuentes desconocidas.");
+            Console.WriteLine("💡 Indique al usuario que active esta opción en: Ajustes > Apps > Acceso especial.");
+        }
+    }
+
     public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
     {
         base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -76,7 +114,7 @@ public class MainActivity : MauiAppCompatActivity
         {
             if (grantResults.Length > 0 && grantResults[0] == Permission.Granted)
             {
-                Console.WriteLine("Permiso READ_PHONE_STATE concedido");
+                Console.WriteLine("✅ Permiso READ_PHONE_STATE concedido");
             }
             else
             {
@@ -160,7 +198,7 @@ public class MainActivity : MauiAppCompatActivity
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error al solicitar permiso de almacenamiento: {ex.Message}");
+                Console.WriteLine($"❌ Error al solicitar permiso de almacenamiento: {ex.Message}");
             }
         }
     }
@@ -182,7 +220,7 @@ public class MainActivity : MauiAppCompatActivity
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error al solicitar ignorar optimización de batería: {ex.Message}");
+                    Console.WriteLine($"❌ Error al solicitar ignorar optimización de batería: {ex.Message}");
                 }
             }
         }
@@ -209,5 +247,4 @@ public class MainActivity : MauiAppCompatActivity
             Console.WriteLine($"❌ Error al crear la carpeta: {ex.Message}");
         }
     }
-
 }

@@ -52,18 +52,21 @@ namespace DISMO_REPORTES.Services
             if (location == null) return;
 
             var deviceId = DeviceIdentifier.GetOrCreateUniqueId();
+            var timestamp = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.Local).ToString("yyyy-MM-dd HH:mm:ss");
+
+
 
             Console.WriteLine($"📡 Enviando datos al servidor...");
             Console.WriteLine($"🔑 GUID del dispositivo: {deviceId}");
             Console.WriteLine($"📍 Latitud: {location.Latitude}, Longitud: {location.Longitude}");
             Console.WriteLine($"⚡ Batería: {Battery.Default.ChargeLevel * 100}%");
-            Console.WriteLine($"🕒 Timestamp: {DateTime.UtcNow.ToString("o")}");
+            Console.WriteLine($"🕒 Timestamp: {timestamp}");
 
             var locationData = new
             {
                 latitude = location.Latitude,
                 longitude = location.Longitude,
-                timestamp = DateTime.UtcNow,
+                timestamp = timestamp,
                 isSuspicious = false,
                 id_ruta = idRuta,
                 battery = Battery.Default.ChargeLevel * 100
@@ -71,7 +74,7 @@ namespace DISMO_REPORTES.Services
 
             var jsonContent = JsonConvert.SerializeObject(locationData);
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-            content.Headers.Add("Device-ID", deviceId); 
+            content.Headers.Add("Device-ID", deviceId);
 
             var url = "https://dismo-gps-8df3af4b987d.herokuapp.com/coordinates";
 
@@ -104,7 +107,6 @@ namespace DISMO_REPORTES.Services
             }
         }
 
-
         private static readonly object _dbLock = new object();
 
         private void SaveLocationToDatabase(Location location, string idRuta)
@@ -117,18 +119,18 @@ namespace DISMO_REPORTES.Services
                     {
                         Latitude = location.Latitude,
                         Longitude = location.Longitude,
-                        Timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fffffK"),
+                        Timestamp = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.Local).ToString("yyyy-MM-dd HH:mm:ss"),
                         IsSuspicious = false,
                         IdRuta = idRuta,
                         BatteryLevel = Battery.Default.ChargeLevel * 100
                     };
 
                     DatabaseService.Database.Insert(pendingLocation);
-                    Console.WriteLine(" Ubicación guardada localmente con Timestamp ISO8601.");
+                    Console.WriteLine("✅ Ubicación guardada localmente con Timestamp y zona horaria.");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($" Error guardando localmente: {ex}");
+                    Console.WriteLine($"❌ Error guardando localmente: {ex}");
                 }
             }
         }
@@ -137,7 +139,7 @@ namespace DISMO_REPORTES.Services
         {
             try
             {
-                var deviceId = DeviceIdentifier.GetOrCreateUniqueId(); 
+                var deviceId = DeviceIdentifier.GetOrCreateUniqueId();
                 var pendingLocations = DatabaseService.Database.Table<PendingLocation>().ToList();
 
                 if (pendingLocations.Count == 0) return;
@@ -159,7 +161,7 @@ namespace DISMO_REPORTES.Services
 
                     var jsonContent = JsonConvert.SerializeObject(batchData);
                     var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-                    content.Headers.Add("Device-ID", deviceId); 
+                    content.Headers.Add("Device-ID", deviceId);
 
                     var url = "https://dismo-gps-8df3af4b987d.herokuapp.com/coordinates";
 
@@ -172,19 +174,19 @@ namespace DISMO_REPORTES.Services
                             {
                                 DatabaseService.Database.Delete(location);
                             }
-                            Console.WriteLine("Lote enviado exitosamente.");
+                            Console.WriteLine("✅ Lote enviado exitosamente.");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($" Error enviando lote: {ex}");
+                        Console.WriteLine($"❌ Error enviando lote: {ex}");
                         break;
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error general en envío de pendientes: {ex}");
+                Console.WriteLine($"❌ Error general en envío de pendientes: {ex}");
             }
         }
 
@@ -200,7 +202,7 @@ namespace DISMO_REPORTES.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine($" Error obteniendo ubicación: {ex}");
+                Console.WriteLine($"❌ Error obteniendo ubicación: {ex}");
                 return null;
             }
         }
