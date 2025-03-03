@@ -47,6 +47,9 @@ jobs:
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
           echo "Nueva versión generada: $VERSION_NAME"
 
+      - name: 🔍 Verificar que VERSION_NAME está definido
+        run: echo "VERSION_NAME=${{ env.VERSION_NAME }}"
+
       - name: 📝 Modificar versión en AndroidManifest.xml
         run: |
           MANIFEST_PATH=$(find . -name "AndroidManifest.xml")
@@ -67,13 +70,13 @@ jobs:
         run: |
           cd publish_output
           APK_NAME=$(ls *.apk | head -n 1)
-          mv "$APK_NAME" "DISMOGT_REPORTES_v$VERSION_NAME.apk"
+          mv "$APK_NAME" "../DISMOGT_REPORTES_v$VERSION_NAME.apk"
 
       - name: 📤 Subir APK como artefacto
         uses: actions/upload-artifact@v4
         with:
           name: APK-Android
-          path: publish_output/DISMOGT_REPORTES_v${{ env.VERSION_NAME }}.apk
+          path: DISMOGT_REPORTES_v${{ env.VERSION_NAME }}.apk
 
   release:
     name: 🚀 Crear Release en GitHub
@@ -81,7 +84,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🔍 Verificar artefactos disponibles antes de descargar
+      - name: 🔍 Verificar artefactos disponibles antes del release
         run: ls -R
 
       - name: 📥 Descargar APK generado
@@ -93,10 +96,10 @@ jobs:
       - name: 🚀 Crear una nueva release en GitHub
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ env.VERSION_NAME }}
+          tag_name: "v${{ env.VERSION_NAME }}"
           name: "Versión ${{ env.VERSION_NAME }}"
           draft: false
           prerelease: false
-          files: DISMOGT_REPORTES_v${{ env.VERSION_NAME }}.apk
+          files: "DISMOGT_REPORTES_v${{ env.VERSION_NAME }}.apk"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
