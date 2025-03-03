@@ -66,6 +66,14 @@ jobs:
             exit 1
           fi
 
+      - name: 📌 Hacer commit del cambio en AndroidManifest.xml
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git add Platforms/Android/AndroidManifest.xml
+          git commit -m "Actualizar versionName a $VERSION_NAME"
+          git push
+
       - name: 🔨 Compilar la aplicación para Android
         run: dotnet publish -f net8.0-android -c Release -o publish_output
 
