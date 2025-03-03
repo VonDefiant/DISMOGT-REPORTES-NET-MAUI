@@ -21,6 +21,12 @@ jobs:
       - name: 📥 Clonar el repositorio
         uses: actions/checkout@v3
 
+      - name: 🔄 Instalar Java 11 (requerido para .NET MAUI)
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
       - name: 🔧 Instalar .NET y .NET MAUI
         uses: actions/setup-dotnet@v3
         with:
@@ -75,25 +81,30 @@ jobs:
 
       - name: 🔑 Configurar y restaurar la Keystore
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '\r' | base64 -d > release.keystore
           echo "storeFile=$(pwd)/release.keystore" >> $GITHUB_ENV
           echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
           echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> $GITHUB_ENV
           echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> $GITHUB_ENV
 
-      - name: 🛠 Verificar Java y la Keystore
+      - name: 📂 Verificar archivo Keystore
+        run: ls -l release.keystore || echo "❌ No se encontró el archivo release.keystore"
+
+      - name: 🛠️ Depuración de variables de entorno
         run: |
-          java -version
-          keytool -list -keystore release.keystore -storepass ${{ secrets.ANDROID_KEYSTORE_PASSWORD }} -v
+          echo "storeFile=${{ env.storeFile }}"
+          echo "storePassword=${{ env.storePassword }}"
+          echo "keyAlias=${{ env.keyAlias }}"
+          echo "keyPassword=${{ env.keyPassword }}"
 
       - name: 🔨 Compilar y Firmar la APK
         run: |
-          dotnet publish -f net8.0-android -c Release -o publish_output \
+          dotnet publish -f net8.0-android -c Release -o publish_output --verbosity detailed \
             -p:AndroidKeyStore=True \
-            -p:AndroidSigningKeyAlias=${{ secrets.ANDROID_KEY_ALIAS }} \
-            -p:AndroidSigningKeyPass=${{ secrets.ANDROID_KEY_PASSWORD }} \
-            -p:AndroidSigningStorePass=${{ secrets.ANDROID_KEYSTORE_PASSWORD }} \
-            -p:AndroidSigningKeyStore=${{ env.storeFile }}
+            -p:AndroidSigningKeyAlias="${{ env.keyAlias }}" \
+            -p:AndroidSigningKeyPass="${{ env.keyPassword }}" \
+            -p:AndroidSigningStorePass="${{ env.storePassword }}" \
+            -p:AndroidSigningStore="${{ env.storeFile }}"
 
       - name: 📂 Verificar archivos generados
         run: find publish_output -name "*.apk" || echo "⚠️ No se encontró ningún APK"
