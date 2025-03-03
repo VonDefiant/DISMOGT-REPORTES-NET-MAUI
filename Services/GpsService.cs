@@ -66,11 +66,12 @@ namespace DISMO_REPORTES.Services
             {
                 latitude = location.Latitude,
                 longitude = location.Longitude,
-                timestamp = timestamp,
+                timestamp = DateTime.Now,
                 isSuspicious = false,
                 id_ruta = idRuta,
                 battery = Battery.Default.ChargeLevel * 100
             };
+
 
             var jsonContent = JsonConvert.SerializeObject(locationData);
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
@@ -119,7 +120,7 @@ namespace DISMO_REPORTES.Services
                     {
                         Latitude = location.Latitude,
                         Longitude = location.Longitude,
-                        Timestamp = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.Local).ToString("yyyy-MM-dd HH:mm:ss"),
+                        Timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fffffK"),
                         IsSuspicious = false,
                         IdRuta = idRuta,
                         BatteryLevel = Battery.Default.ChargeLevel * 100

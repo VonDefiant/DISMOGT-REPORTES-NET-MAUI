@@ -56,8 +56,32 @@ public class MainActivity : MauiAppCompatActivity
         // 🔍 Verificar actualizaciones en GitHub
         Console.WriteLine("🔍 Buscando actualizaciones...");
         var updateService = new UpdateService();
-        await updateService.CheckForUpdate();
+        var updateInfo = await updateService.CheckForUpdate();
+
+        if (updateInfo.HasUpdate)
+        {
+            ShowUpdateDialog(updateInfo.ApkUrl);
+        }
     }
+
+    private void ShowUpdateDialog(string apkUrl)
+    {
+        RunOnUiThread(() =>
+        {
+            var builder = new AlertDialog.Builder(this);
+            builder.SetTitle("Nueva versión disponible");
+            builder.SetMessage("Hay una nueva actualización disponible. Es necesario actualizar para continuar usando la aplicación.");
+            builder.SetPositiveButton("Actualizar", async (sender, args) =>
+            {
+                var updateService = new UpdateService();
+                await updateService.DownloadAndInstallUpdate(apkUrl, this);
+            });
+
+            builder.SetCancelable(false);
+            builder.Show();
+        });
+    }
+
 
     private void CheckPhoneStatePermission()
     {
@@ -98,7 +122,6 @@ public class MainActivity : MauiAppCompatActivity
 
         // ⚠️ Android 14 requiere una confirmación manual adicional
         if (Build.VERSION.SdkInt >= (BuildVersionCodes)34) // Android 14 (API 34)
-
         {
             Console.WriteLine("⚠️ En Android 14, el usuario debe permitir instalaciones desde fuentes desconocidas.");
             Console.WriteLine("💡 Indique al usuario que active esta opción en: Ajustes > Apps > Acceso especial.");
@@ -118,14 +141,13 @@ public class MainActivity : MauiAppCompatActivity
             }
             else
             {
-                Toast.MakeText(this, "El permiso para leer el IMEI fue denegado", ToastLength.Long).Show();
+                Toast.MakeText(this, "", ToastLength.Long).Show();
             }
         }
     }
 
     private async Task RequestPermissionsAsync()
     {
-        // Permisos de ubicación
         var locationStatus = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
         if (locationStatus != PermissionStatus.Granted)
         {
@@ -150,7 +172,6 @@ public class MainActivity : MauiAppCompatActivity
             Toast.MakeText(this, "Permiso de ubicación denegado", ToastLength.Short).Show();
         }
 
-        // Solicitar permisos de notificaciones (Android 13+)
         if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu)
         {
             if (ContextCompat.CheckSelfPermission(this, Manifest.Permission.PostNotifications) != Permission.Granted)
@@ -159,7 +180,6 @@ public class MainActivity : MauiAppCompatActivity
             }
         }
 
-        // Solicitar permisos de almacenamiento si son necesarios
         if (Build.VERSION.SdkInt >= BuildVersionCodes.R)
         {
             if (!Android.OS.Environment.IsExternalStorageManager)

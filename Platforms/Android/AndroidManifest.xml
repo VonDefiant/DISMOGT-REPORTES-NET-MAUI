@@ -1,68 +1,41 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    android:versionName="1.7"
-    package="com.dismogt.app"
-    android:versionCode="2">
-
-	<application
-        android:allowBackup="true"
-        android:icon="@mipmap/appicon"
-        android:supportsRtl="true"
-        android:label="DISMOGT REPORTES">
-
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionName="0.0.30" package="com.dismogt.app" android:versionCode="2">
+	<application android:allowBackup="true" android:icon="@mipmap/appicon" android:supportsRtl="true" android:label="DISMOGT REPORTES">
 		<!-- Receptor para manejar reinicios del dispositivo -->
-		<receiver android:enabled="true"
-            android:exported="true"
-            android:name="com.shiny.ShinyBootReceiver">
+		<receiver android:enabled="true" android:exported="true" android:name="com.shiny.ShinyBootReceiver">
 			<intent-filter>
 				<action android:name="android.intent.action.BOOT_COMPLETED" />
 				<action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
 			</intent-filter>
 		</receiver>
-
 		<!-- Configuración del FileProvider -->
-		<provider
-			android:name="androidx.core.content.FileProvider"
-			android:authorities="com.dismogt.app.fileprovider"
-			android:exported="false"
-			android:grantUriPermissions="true">
-			<meta-data
-				android:name="android.support.FILE_PROVIDER_PATHS"
-				android:resource="@xml/filepaths" />
+		<provider android:name="androidx.core.content.FileProvider" android:authorities="com.dismogt.app.fileprovider" android:grantUriPermissions="true" android:exported="false">
+			<meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
 		</provider>
-
 	</application>
-
 	<!-- Permisos de red -->
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.INTERNET" />
-
 	<!-- Permisos de almacenamiento -->
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 	<uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
-
 	<!-- Permisos de ubicación -->
 	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 	<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-
 	<!-- Permisos de estado del dispositivo -->
 	<uses-permission android:name="android.permission.READ_PHONE_STATE" />
 	<uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
 	<uses-permission android:name="android.permission.READ_PRECISE_PHONE_STATE" />
-
 	<!-- Permiso para instalar paquetes (necesario para actualizar la app con APK) -->
 	<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-
 	<!-- Permisos de energía y batería -->
 	<uses-permission android:name="android.permission.WAKE_LOCK" />
 	<uses-permission android:name="android.permission.BATTERY_STATS" />
 	<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-
 	<!-- Permisos de notificaciones -->
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
 	<!-- Permisos adicionales para compatibilidad -->
 	<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -72,5 +45,4 @@
 	<uses-permission android:name="android.permission.LOCATION_HARDWARE" />
 	<uses-permission android:name="android.permission.MANAGE_DEVICE_POLICY_LOCATION" />
 	<uses-permission android:name="android.permission.MANAGE_DEVICE_POLICY_MOBILE_NETWORK" />
-
 </manifest>

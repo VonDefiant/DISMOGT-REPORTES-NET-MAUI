@@ -52,6 +52,14 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <None Remove="Resources\xml\file_paths.xml" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <AndroidResource Include="Resources\xml\file_paths.xml" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<!-- Dependencies -->
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
@@ -89,9 +97,5 @@
 		<MauiXaml Update="ResMxSKUReportPage.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="Resources\xml\" />
 	</ItemGroup>
 </Project>
