@@ -32,23 +32,65 @@ jobs:
       - name: 🔄 Restaurar dependencias
         run: dotnet restore
 
+      - name: 📌 Calcular versión dinámica y guardarla
+        id: version
+        run: |
+          BUILD_NUMBER=${{ github.run_number }}
+          MAX_PATCH=75
+          MAX_MINOR=75
+          MAJOR=$(( BUILD_NUMBER / (MAX_MINOR * MAX_PATCH) ))
+          MINOR=$(( (BUILD_NUMBER / MAX_PATCH) % MAX_MINOR ))
+          PATCH=$(( BUILD_NUMBER % MAX_PATCH ))
+          if [ $PATCH -eq 0 ]; then PATCH=0; MINOR=$((MINOR + 1)); fi
+          if [ $MINOR -eq $MAX_MINOR ]; then MINOR=0; MAJOR=$((MAJOR + 1)); fi
+          VERSION_NAME="$MAJOR.$MINOR.$PATCH"
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          echo "$VERSION_NAME" > version.txt  # Guardamos la versión en un archivo
+          echo "Nueva versión generada: $VERSION_NAME"
+
+      - name: 🔄 Subir archivo de versión
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-file
+          path: version.txt
+
+      - name: 📝 Modificar versión en AndroidManifest.xml
+        run: |
+          MANIFEST_PATH="Platforms/Android/AndroidManifest.xml"
+
+          if [ -f "$MANIFEST_PATH" ]; then
+            echo "✅ AndroidManifest.xml encontrado en $MANIFEST_PATH"
+            sed -i 's/android:versionName="[0-9.]*"/android:versionName="'$VERSION_NAME'"/g' "$MANIFEST_PATH"
+          else
+            echo "❌ No se encontró AndroidManifest.xml en $MANIFEST_PATH"
+            exit 1
+          fi
+
+      - name: 📌 Hacer commit del cambio en AndroidManifest.xml
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git add Platforms/Android/AndroidManifest.xml
+          git commit -m "Actualizar versionName a $VERSION_NAME"
+          git push
+
       - name: 🔨 Compilar la aplicación para Android
         run: dotnet publish -f net8.0-android -c Release -o publish_output
 
       - name: 📂 Verificar archivos generados
-        run: ls -R publish_output  # ✅ Debugging para ver el nombre del APK
+        run: find publish_output -name "*.apk" || echo "⚠️ No se encontró ningún APK"
 
       - name: 📦 Empaquetar APK con nombre personalizado
         run: |
           cd publish_output
-          APK_NAME=$(ls *.apk | head -n 1)  # Encuentra el APK automáticamente
-          mv "$APK_NAME" "DISMOGT_REPORTES_v1.0.${{ github.run_number }}.apk"
+          APK_NAME=$(ls *.apk | head -n 1)
+          mv "$APK_NAME" "../DISMOGT_REPORTES_v$VERSION_NAME.apk"
 
       - name: 📤 Subir APK como artefacto
         uses: actions/upload-artifact@v4
         with:
           name: APK-Android
-          path: publish_output/DISMOGT_REPORTES_v1.0.${{ github.run_number }}.apk
+          path: DISMOGT_REPORTES_v${{ env.VERSION_NAME }}.apk
 
   release:
     name: 🚀 Crear Release en GitHub
@@ -56,19 +98,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: 📥 Descargar archivo de versión
+        uses: actions/download-artifact@v4
+        with:
+          name: version-file
+
+      - name: 📥 Cargar versión desde archivo
+        run: echo "VERSION_NAME=$(cat version.txt)" >> $GITHUB_ENV
+
       - name: 📥 Descargar APK generado
         uses: actions/download-artifact@v4
         with:
           name: APK-Android
-          path: publish_output
+          path: .
+
+      - name: 📂 Verificar artefactos descargados
+        run: ls -R
 
       - name: 🚀 Crear una nueva release en GitHub
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: "Versión 1.0.${{ github.run_number }}"
+          tag_name: "v${{ env.VERSION_NAME }}"
+          name: "Versión ${{ env.VERSION_NAME }}"
           draft: false
           prerelease: false
-          files: publish_output/DISMOGT_REPORTES_v1.0.${{ github.run_number }}.apk
+          files: "DISMOGT_REPORTES_v${{ env.VERSION_NAME }}.apk"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
