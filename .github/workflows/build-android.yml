@@ -32,23 +32,66 @@ jobs:
       - name: 🔄 Restaurar dependencias
         run: dotnet restore
 
+      - name: 📌 Calcular versión dinámica
+        id: version
+        run: |
+          # Obtener el número de compilación actual
+          BUILD_NUMBER=${{ github.run_number }}
+
+          # Definir los límites de cada número de versión
+          MAX_PATCH=75
+          MAX_MINOR=75
+
+          # Calcular X, Y, Z (Mayor, Menor, Parche)
+          MAJOR=$(( BUILD_NUMBER / (MAX_MINOR * MAX_PATCH) ))
+          MINOR=$(( (BUILD_NUMBER / MAX_PATCH) % MAX_MINOR ))
+          PATCH=$(( BUILD_NUMBER % MAX_PATCH ))
+
+          # Si el PATCH alcanza su tope, reiniciarlo a 0 y aumentar MINOR
+          if [ $PATCH -eq 0 ]; then
+            PATCH=0
+            MINOR=$((MINOR + 1))
+          fi
+
+          # Si el MINOR alcanza su tope, reiniciarlo a 0 y aumentar MAJOR
+          if [ $MINOR -eq $MAX_MINOR ]; then
+            MINOR=0
+            MAJOR=$((MAJOR + 1))
+          fi
+
+          VERSION_NAME="$MAJOR.$MINOR.$PATCH"
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          echo "Nueva versión generada: $VERSION_NAME"
+
+      - name: 📝 Modificar versión en AndroidManifest.xml
+        run: |
+          MANIFEST_PATH=$(find . -name "AndroidManifest.xml")
+
+          if [ -f "$MANIFEST_PATH" ]; then
+            echo "Modificando AndroidManifest.xml en: $MANIFEST_PATH"
+            sed -i 's/android:versionName="[0-9.]*"/android:versionName="'$VERSION_NAME'"/g' "$MANIFEST_PATH"
+          else
+            echo "⚠️ No se encontró el AndroidManifest.xml"
+            exit 1
+          fi
+
       - name: 🔨 Compilar la aplicación para Android
         run: dotnet publish -f net8.0-android -c Release -o publish_output
 
       - name: 📂 Verificar archivos generados
-        run: ls -R publish_output  # ✅ Debugging para ver el nombre del APK
+        run: ls -R publish_output
 
       - name: 📦 Empaquetar APK con nombre personalizado
         run: |
           cd publish_output
-          APK_NAME=$(ls *.apk | head -n 1)  # Encuentra el APK automáticamente
-          mv "$APK_NAME" "DISMOGT_REPORTES_v1.0.${{ github.run_number }}.apk"
+          APK_NAME=$(ls *.apk | head -n 1)
+          mv "$APK_NAME" "DISMOGT_REPORTES_v$VERSION_NAME.apk"
 
       - name: 📤 Subir APK como artefacto
         uses: actions/upload-artifact@v4
         with:
           name: APK-Android
-          path: publish_output/DISMOGT_REPORTES_v1.0.${{ github.run_number }}.apk
+          path: publish_output/DISMOGT_REPORTES_v$VERSION_NAME.apk
 
   release:
     name: 🚀 Crear Release en GitHub
@@ -65,10 +108,10 @@ jobs:
       - name: 🚀 Crear una nueva release en GitHub
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: "Versión 1.0.${{ github.run_number }}"
+          tag_name: v${{ env.VERSION_NAME }}
+          name: "Versión ${{ env.VERSION_NAME }}"
           draft: false
           prerelease: false
-          files: publish_output/DISMOGT_REPORTES_v1.0.${{ github.run_number }}.apk
+          files: publish_output/DISMOGT_REPORTES_v${{ env.VERSION_NAME }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
