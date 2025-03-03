@@ -32,7 +32,7 @@ jobs:
       - name: 🔄 Restaurar dependencias
         run: dotnet restore
 
-      - name: 📌 Calcular versión dinámica
+      - name: 📌 Calcular versión dinámica y guardarla
         id: version
         run: |
           BUILD_NUMBER=${{ github.run_number }}
@@ -45,10 +45,14 @@ jobs:
           if [ $MINOR -eq $MAX_MINOR ]; then MINOR=0; MAJOR=$((MAJOR + 1)); fi
           VERSION_NAME="$MAJOR.$MINOR.$PATCH"
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          echo "$VERSION_NAME" > version.txt  # Guardamos la versión en un archivo
           echo "Nueva versión generada: $VERSION_NAME"
 
-      - name: 🔍 Verificar que VERSION_NAME está definido
-        run: echo "VERSION_NAME=${{ env.VERSION_NAME }}"
+      - name: 🔄 Subir archivo de versión
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-file
+          path: version.txt
 
       - name: 📝 Modificar versión en AndroidManifest.xml
         run: |
@@ -84,14 +88,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🔍 Verificar artefactos disponibles antes del release
-        run: ls -R
+      - name: 📥 Descargar archivo de versión
+        uses: actions/download-artifact@v4
+        with:
+          name: version-file
+
+      - name: 📥 Cargar versión desde archivo
+        run: echo "VERSION_NAME=$(cat version.txt)" >> $GITHUB_ENV
 
       - name: 📥 Descargar APK generado
         uses: actions/download-artifact@v4
         with:
           name: APK-Android
           path: .
+
+      - name: 📂 Verificar artefactos descargados
+        run: ls -R
 
       - name: 🚀 Crear una nueva release en GitHub
         uses: softprops/action-gh-release@v1
