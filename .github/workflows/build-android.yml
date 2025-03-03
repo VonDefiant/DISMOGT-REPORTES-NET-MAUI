@@ -75,11 +75,11 @@ jobs:
 
       - name: 🔑 Configurar y restaurar la Keystore
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > release.keystore
-          echo "storeFile=$(pwd)/release.keystore" >> $GITHUB_ENV
-          echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
-          echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> $GITHUB_ENV
-          echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> $GITHUB_ENV
+        echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '\r' | base64 -d > release.keystore
+        echo "storeFile=$(pwd)/release.keystore" >> $GITHUB_ENV
+        echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+        echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> $GITHUB_ENV
+        echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> $GITHUB_ENV
 
       - name: 🔨 Compilar y Firmar la APK
         run: |
