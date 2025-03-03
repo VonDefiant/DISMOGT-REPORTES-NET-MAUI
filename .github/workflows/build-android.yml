@@ -54,48 +54,41 @@ jobs:
           name: version-file
           path: version.txt
 
-      - name: 📝 Modificar versión en AndroidManifest.xml
-        run: |
-          MANIFEST_PATH="Platforms/Android/AndroidManifest.xml"
+      - name: 🔨 Compilar la aplicación para Android
+        run: dotnet publish -f net8.0-android -c Release -o publish_output
 
-          if [ -f "$MANIFEST_PATH" ]; then
-            echo "✅ AndroidManifest.xml encontrado en $MANIFEST_PATH"
-            sed -i 's/android:versionName="[0-9.]*"/android:versionName="'$VERSION_NAME'"/g' "$MANIFEST_PATH"
-          else
-            echo "❌ No se encontró AndroidManifest.xml en $MANIFEST_PATH"
-            exit 1
-          fi
-
-      - name: 📌 Hacer commit del cambio en AndroidManifest.xml
-        run: |
-          git config --global user.email "github-actions@github.com"
-          git config --global user.name "GitHub Actions"
-          git add Platforms/Android/AndroidManifest.xml
-          git commit -m "Actualizar versionName a $VERSION_NAME"
-          git push
-
-      - name: 🔑 Restaurar Keystore
-        run: echo "${{ secrets.DISMOGT_KEYSTORE_B64 }}" | base64 --decode > dismogt-key.jks
-
-      - name: 🔨 Compilar la aplicación para Android con firma
-        run: |
-          dotnet publish -f net8.0-android -c Release -o publish_output \
-            /p:AndroidKeyStore=True \
-            /p:AndroidSigningKeyAlias=${{ secrets.DISMOGT_KEY_ALIAS }} \
-            /p:AndroidSigningKeyPass=${{ secrets.DISMOGT_KEY_PASSWORD }} \
-            /p:AndroidSigningStorePass=${{ secrets.DISMOGT_KEYSTORE_PASSWORD }} \
-            /p:AndroidSigningKeyStore=dismogt-key.jks
-
-      - name: 📂 Verificar archivos generados
+      - name: 📝 Verificar si se generó el APK
         run: find publish_output -name "*.apk" || echo "⚠️ No se encontró ningún APK"
 
-      - name: 📦 Empaquetar APK con nombre personalizado
-        run: |
-          cd publish_output
-          APK_NAME=$(ls *.apk | head -n 1)
-          mv "$APK_NAME" "../DISMOGT_REPORTES_v$VERSION_NAME.apk"
+      - name: 🔑 Decodificar y guardar la Keystore
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+        run: echo "$ANDROID_KEYSTORE" | base64 --decode > dismogt.keystore
 
-      - name: 📤 Subir APK como artefacto
+      - name: 🔐 Firmar APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          APK_FILE=$(find publish_output -name "*.apk" | head -n 1)
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+            -keystore dismogt.keystore \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -keypass "$ANDROID_KEY_PASSWORD" \
+            "$APK_FILE" "$ANDROID_KEY_ALIAS"
+
+      - name: 📝 Verificar firma del APK
+        run: |
+          APK_FILE=$(find publish_output -name "*.apk" | head -n 1)
+          jarsigner -verify -verbose -certs "$APK_FILE"
+
+      - name: 📦 Renombrar APK con versión
+        run: |
+          APK_FILE=$(find publish_output -name "*.apk" | head -n 1)
+          mv "$APK_FILE" "DISMOGT_REPORTES_v$VERSION_NAME.apk"
+
+      - name: 📤 Subir APK firmado como artefacto
         uses: actions/upload-artifact@v4
         with:
           name: APK-Android
