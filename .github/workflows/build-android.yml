@@ -45,7 +45,7 @@ jobs:
           if [ $MINOR -eq $MAX_MINOR ]; then MINOR=0; MAJOR=$((MAJOR + 1)); fi
           VERSION_NAME="$MAJOR.$MINOR.$PATCH"
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
-          echo "$VERSION_NAME" > version.txt  # Guardamos la versión en un archivo
+          echo "$VERSION_NAME" > version.txt
           echo "Nueva versión generada: $VERSION_NAME"
 
       - name: 🔄 Subir archivo de versión
@@ -75,11 +75,16 @@ jobs:
 
       - name: 🔑 Configurar y restaurar la Keystore
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '\r' | base64 -d > release.keystore
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
           echo "storeFile=$(pwd)/release.keystore" >> $GITHUB_ENV
           echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
           echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> $GITHUB_ENV
           echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> $GITHUB_ENV
+
+      - name: 🛠 Verificar Java y la Keystore
+        run: |
+          java -version
+          keytool -list -keystore release.keystore -storepass ${{ secrets.ANDROID_KEYSTORE_PASSWORD }} -v
 
       - name: 🔨 Compilar y Firmar la APK
         run: |
@@ -88,7 +93,7 @@ jobs:
             -p:AndroidSigningKeyAlias=${{ secrets.ANDROID_KEY_ALIAS }} \
             -p:AndroidSigningKeyPass=${{ secrets.ANDROID_KEY_PASSWORD }} \
             -p:AndroidSigningStorePass=${{ secrets.ANDROID_KEYSTORE_PASSWORD }} \
-            -p:AndroidSigningStore=${{ env.storeFile }}
+            -p:AndroidSigningKeyStore=${{ env.storeFile }}
 
       - name: 📂 Verificar archivos generados
         run: find publish_output -name "*.apk" || echo "⚠️ No se encontró ningún APK"
