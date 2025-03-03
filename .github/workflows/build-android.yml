@@ -56,11 +56,13 @@ jobs:
 
       - name: 📝 Modificar versión en AndroidManifest.xml
         run: |
-          MANIFEST_PATH=$(find . -name "AndroidManifest.xml")
+          MANIFEST_PATH="Platforms/Android/AndroidManifest.xml"
+
           if [ -f "$MANIFEST_PATH" ]; then
+            echo "✅ AndroidManifest.xml encontrado en $MANIFEST_PATH"
             sed -i 's/android:versionName="[0-9.]*"/android:versionName="'$VERSION_NAME'"/g' "$MANIFEST_PATH"
           else
-            echo "⚠️ No se encontró el AndroidManifest.xml"
+            echo "❌ No se encontró AndroidManifest.xml en $MANIFEST_PATH"
             exit 1
           fi
 
