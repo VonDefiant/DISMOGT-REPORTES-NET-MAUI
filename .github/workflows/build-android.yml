@@ -57,7 +57,6 @@ jobs:
       - name: 📝 Modificar versión en AndroidManifest.xml
         run: |
           MANIFEST_PATH="Platforms/Android/AndroidManifest.xml"
-
           if [ -f "$MANIFEST_PATH" ]; then
             echo "✅ AndroidManifest.xml encontrado en $MANIFEST_PATH"
             sed -i 's/android:versionName="[0-9.]*"/android:versionName="'$VERSION_NAME'"/g' "$MANIFEST_PATH"
@@ -74,8 +73,22 @@ jobs:
           git commit -m "Actualizar versionName a $VERSION_NAME"
           git push
 
-      - name: 🔨 Compilar la aplicación para Android
-        run: dotnet publish -f net8.0-android -c Release -o publish_output
+      - name: 🔑 Configurar y restaurar la Keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+          echo "storeFile=$(pwd)/release.keystore" >> $GITHUB_ENV
+          echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+          echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> $GITHUB_ENV
+          echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> $GITHUB_ENV
+
+      - name: 🔨 Compilar y Firmar la APK
+        run: |
+          dotnet publish -f net8.0-android -c Release -o publish_output \
+            -p:AndroidKeyStore=true \
+            -p:AndroidSigningKeyAlias=$keyAlias \
+            -p:AndroidSigningKeyPass=$keyPassword \
+            -p:AndroidSigningStorePass=$storePassword \
+            -p:AndroidSigningStore=$storeFile
 
       - name: 📂 Verificar archivos generados
         run: find publish_output -name "*.apk" || echo "⚠️ No se encontró ningún APK"
