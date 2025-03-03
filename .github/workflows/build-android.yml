@@ -21,12 +21,6 @@ jobs:
       - name: 📥 Clonar el repositorio
         uses: actions/checkout@v3
 
-      - name: 🔄 Instalar Java 11 (requerido para .NET MAUI)
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '11'
-
       - name: 🔧 Instalar .NET y .NET MAUI
         uses: actions/setup-dotnet@v3
         with:
@@ -63,6 +57,7 @@ jobs:
       - name: 📝 Modificar versión en AndroidManifest.xml
         run: |
           MANIFEST_PATH="Platforms/Android/AndroidManifest.xml"
+
           if [ -f "$MANIFEST_PATH" ]; then
             echo "✅ AndroidManifest.xml encontrado en $MANIFEST_PATH"
             sed -i 's/android:versionName="[0-9.]*"/android:versionName="'$VERSION_NAME'"/g' "$MANIFEST_PATH"
@@ -79,32 +74,17 @@ jobs:
           git commit -m "Actualizar versionName a $VERSION_NAME"
           git push
 
-      - name: 🔑 Configurar y restaurar la Keystore
-        run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '\r' | base64 -d > release.keystore
-          echo "storeFile=$(pwd)/release.keystore" >> $GITHUB_ENV
-          echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
-          echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> $GITHUB_ENV
-          echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> $GITHUB_ENV
+      - name: 🔑 Restaurar Keystore
+        run: echo "${{ secrets.DISMOGT_KEYSTORE_B64 }}" | base64 --decode > dismogt-key.jks
 
-      - name: 📂 Verificar archivo Keystore
-        run: ls -l release.keystore || echo "❌ No se encontró el archivo release.keystore"
-
-      - name: 🛠️ Depuración de variables de entorno
+      - name: 🔨 Compilar la aplicación para Android con firma
         run: |
-          echo "storeFile=${{ env.storeFile }}"
-          echo "storePassword=${{ env.storePassword }}"
-          echo "keyAlias=${{ env.keyAlias }}"
-          echo "keyPassword=${{ env.keyPassword }}"
-
-      - name: 🔨 Compilar y Firmar la APK
-        run: |
-          dotnet publish -f net8.0-android -c Release -o publish_output --verbosity detailed \
-            -p:AndroidKeyStore=True \
-            -p:AndroidSigningKeyAlias="${{ env.keyAlias }}" \
-            -p:AndroidSigningKeyPass="${{ env.keyPassword }}" \
-            -p:AndroidSigningStorePass="${{ env.storePassword }}" \
-            -p:AndroidSigningStore="${{ env.storeFile }}"
+          dotnet publish -f net8.0-android -c Release -o publish_output \
+            /p:AndroidKeyStore=True \
+            /p:AndroidSigningKeyAlias=${{ secrets.DISMOGT_KEY_ALIAS }} \
+            /p:AndroidSigningKeyPass=${{ secrets.DISMOGT_KEY_PASSWORD }} \
+            /p:AndroidSigningStorePass=${{ secrets.DISMOGT_KEYSTORE_PASSWORD }} \
+            /p:AndroidSigningKeyStore=dismogt-key.jks
 
       - name: 📂 Verificar archivos generados
         run: find publish_output -name "*.apk" || echo "⚠️ No se encontró ningún APK"
