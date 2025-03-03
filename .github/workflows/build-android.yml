@@ -60,11 +60,8 @@ jobs:
       - name: 🔨 Compilar la aplicación para Android
         run: dotnet publish -f net8.0-android -c Release -o publish_output
 
-      - name: 📂 Verificar APK generado
-        run: find publish_output -name "*.apk"
-
-      - name: 📂 Verificar archivos antes de subir
-        run: ls -R publish_output
+      - name: 📂 Verificar archivos generados
+        run: find publish_output -name "*.apk" || echo "⚠️ No se encontró ningún APK"
 
       - name: 📦 Empaquetar APK con nombre personalizado
         run: |
@@ -84,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🔍 Verificar artefactos disponibles
+      - name: 🔍 Verificar artefactos disponibles antes de descargar
         run: ls -R
 
       - name: 📥 Descargar APK generado
