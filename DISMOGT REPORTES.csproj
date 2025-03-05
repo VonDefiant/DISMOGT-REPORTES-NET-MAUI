@@ -52,11 +52,24 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <AndroidResource Remove="Platforms\Android\Resources\xml\filepaths.xml" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Remove="Platforms\Android\google-services.json" />
 	  <None Remove="Resources\xml\file_paths.xml" />
 	</ItemGroup>
 
 	<ItemGroup>
 	  <AndroidResource Include="Resources\xml\file_paths.xml" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <EditorConfigFiles Include="Platforms\Android\Resources\xml\filepaths.xml" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <GoogleServicesJson Include="Platforms\Android\google-services.json" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -72,6 +85,7 @@
 		<PackageReference Include="Shiny.Locations" Version="3.3.4" />
 		<PackageReference Include="Shiny.Notifications" Version="3.3.4" />
 		<PackageReference Include="Shiny.Push" Version="3.3.4" />
+		<PackageReference Include="Shiny.Push.FirebaseMessaging" Version="3.3.4" />
 		<PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
 	</ItemGroup>
 

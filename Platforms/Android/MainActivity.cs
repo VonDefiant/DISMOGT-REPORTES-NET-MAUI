@@ -46,6 +46,8 @@ public class MainActivity : MauiAppCompatActivity
         Console.WriteLine("🚀 Aplicación iniciada...");
 
         Platform.Init(this, savedInstanceState);
+
+
         CreateNotificationChannel();
         await RequestPermissionsAsync();
         CreateAppFolder();

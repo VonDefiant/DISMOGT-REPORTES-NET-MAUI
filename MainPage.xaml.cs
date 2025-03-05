@@ -2,6 +2,11 @@
 using System;
 using System.Data;
 using System.IO;
+using System.Threading.Tasks;
+using Shiny.Push;
+using Microsoft.Extensions.DependencyInjection;
+using Shiny.Hosting;
+using Shiny;
 
 namespace DISMOGT_REPORTES
 {
@@ -52,19 +57,49 @@ namespace DISMOGT_REPORTES
 
             // Guardar el valor obtenido en un archivo de texto
             GuardarRutaEnTxt(rutaSeleccionada);
+
+            // **REGISTRAR NOTIFICACIONES PUSH**
+            _ = RegisterPushNotifications();
         }
+
+private async Task RegisterPushNotifications()
+{
+    try
+    {
+        var pushManager = Host.Current.Services.GetService<IPushManager>();
+        if (pushManager == null)
+        {
+            Console.WriteLine("❌ No se pudo obtener IPushManager. Verifica la configuración en MauiProgram.cs");
+            return;
+        }
+
+        var result = await pushManager.RequestAccess();
+
+        if (result.Status == AccessState.Available)
+        {
+            string token = result.RegistrationToken;
+            Console.WriteLine("📲 Token de Firebase obtenido en MainPage: " + token);
+        }
+        else
+        {
+            Console.WriteLine("⚠️ No se pudieron activar las notificaciones push.");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("❌ Error al registrar notificaciones push: " + ex.Message);
+    }
+}
+
+
 
         public string ObtenerRutaDesdeBD()
         {
             try
             {
-                // Consulta SQL para obtener la ruta
                 string consulta = "SELECT RUTA FROM ERPADMIN_RUTA_CFG LIMIT 1";
-
                 var rutaSeleccionada = _conn.ExecuteScalar<string>(consulta);
-
-                Console.WriteLine("RUTA DE VENTA " + rutaSeleccionada);
-
+                Console.WriteLine("RUTA DE VENTA: " + rutaSeleccionada);
                 return rutaSeleccionada;
             }
             catch (Exception ex)
@@ -78,13 +113,11 @@ namespace DISMOGT_REPORTES
         {
             try
             {
-                // Si el archivo ya existe, se borra para reemplazarlo
                 if (File.Exists(txtFilePath))
                 {
                     File.Delete(txtFilePath);
                 }
 
-                // Escribir la nueva ruta en el archivo de texto
                 File.WriteAllText(txtFilePath, ruta);
                 Console.WriteLine("Ruta guardada en archivo TXT: " + txtFilePath);
             }
@@ -96,20 +129,14 @@ namespace DISMOGT_REPORTES
 
         private async void OnGenerarButtonClicked(object sender, EventArgs e)
         {
-            // Obtener la fecha seleccionada del DatePicker
             DateTime fechaSeleccionada = FechaDatePicker.Date;
-
-            // Formatear la fecha seleccionada como "M/d/yyyy"
             string fechaBuscada = fechaSeleccionada.ToString("M/d/yyyy");
-
-            // Obtener el tipo de informe seleccionado
             string tipoInforme = TipoInformePicker.SelectedItem?.ToString();
             string companiadm = "DISMOGT";
             DataLabel.Text = string.Empty;
 
             if (!string.IsNullOrEmpty(tipoInforme))
             {
-                // Seleccionar el informe según el tipo
                 switch (tipoInforme)
                 {
                     case "Efectividad":
@@ -146,7 +173,6 @@ namespace DISMOGT_REPORTES
             }
             else
             {
-                // Manejar el caso en que no se ha seleccionado un tipo de informe
                 ErrorLabel.Text = "Seleccione un tipo de informe";
             }
         }
