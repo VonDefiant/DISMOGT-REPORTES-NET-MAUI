@@ -16,6 +16,7 @@ namespace DISMOGT_REPORTES.Models
         public double Longitude { get; set; }
         public string Timestamp { get; set; } 
         public bool IsSuspicious { get; set; }
+        [NotNull]
         public string IdRuta { get; set; }
         public double BatteryLevel { get; set; }
 

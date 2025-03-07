@@ -1,32 +1,52 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:d="http://schemas.microsoft.com/dotnet/2021/maui/design"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             mc:Ignorable="d"
              x:Class="DISMOGT_REPORTES.ResMxClientPage">
 
     <ContentPage.BackgroundImageSource>
         <FileImageSource File="background.png" />
     </ContentPage.BackgroundImageSource>
 
-    <StackLayout Padding="20">
-        <!-- Entrada de texto para buscar cliente -->
-        <Entry x:Name="ClienteBuscadoEntry" 
-               Placeholder="Ingrese el código de cliente" 
-               TextColor="White" 
-               PlaceholderColor="White" 
-               Completed="OnClienteBuscadoEntryCompleted" />
+    <StackLayout Padding="20" Spacing="10">
+        <!-- Encabezado -->
+        <Label Text="Reporte Detallado por Cliente"
+               FontSize="20"
+               FontAttributes="Bold"
+               HorizontalOptions="Center"
+               TextColor="White"/>
 
-        <!-- Contenido de la tabla con ListView -->
-        <ListView x:Name="ReportListView" ItemsSource="{Binding ReportData}">
+        <!-- Picker para seleccionar Cliente -->
+        <Picker x:Name="ClientePicker"
+                Title="Seleccione un Cliente"
+                TextColor="White"
+                SelectedIndexChanged="OnClienteSeleccionado"/>
+
+        <!-- Etiqueta para mostrar el nombre del cliente -->
+        <Label x:Name="labelCliente"
+               FontSize="16"
+               FontAttributes="Bold"
+               TextColor="White"
+               HorizontalTextAlignment="Center"/>
+
+        <!-- Lista de Reportes -->
+        <ListView x:Name="ReportListView"
+                  ItemsSource="{Binding ReportData}"
+                  HasUnevenRows="True"
+                  BackgroundColor="Transparent">    
             <ListView.ItemTemplate>
                 <DataTemplate>
                     <ViewCell>
-                        <Grid>
-                            <Label Text="{Binding DESCRIPCION}" FontSize="10" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" TextColor="White"/>
-                            <Label Text="{Binding UNIDADES}" FontSize="10" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" TextColor="White"/>
-                            <Label Text="{Binding VENTA}" FontSize="10" HorizontalTextAlignment="Center" VerticalTextAlignment="Center" TextColor="White"/>
+                        <Grid Padding="5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*" />
+                                <ColumnDefinition Width="1*" />
+                                <ColumnDefinition Width="1.5*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Label Text="{Binding ARTICULO}" FontSize="12" TextColor="White" HorizontalTextAlignment="Center" Grid.Column="0"/>
+                            <Label Text="{Binding DESCRIPCION}" FontSize="12" TextColor="White" HorizontalTextAlignment="Center" Grid.Column="1"/>
+                            <Label Text="{Binding UNIDADES}" FontSize="12" TextColor="White" HorizontalTextAlignment="Center" Grid.Column="2"/>
+                            <Label Text="{Binding VENTA}" FontSize="12" TextColor="White" HorizontalTextAlignment="Center" Grid.Column="3"/>
                         </Grid>
                     </ViewCell>
                 </DataTemplate>

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
-using Android.OS; 
+using Android.OS; // Asegura que este using esté presente
+
 
 namespace DISMO_REPORTES.Services
 {

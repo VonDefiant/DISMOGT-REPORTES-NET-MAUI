@@ -8,6 +8,9 @@ using Android.Content.PM;
 using Android.OS;
 using Android.Runtime;
 using Android.Widget;
+using AndroidX.Core.Content;
+using AndroidX.Core.App;
+using DISMOGT_REPORTES.Services;
 
 namespace DISMOGT_REPORTES;
 
@@ -33,35 +36,120 @@ namespace DISMOGT_REPORTES;
 )]
 public class MainActivity : MauiAppCompatActivity
 {
+    private const int PHONE_STATE_PERMISSION_CODE = 1003;
+    private const int INSTALL_PERMISSION_REQUEST_CODE = 1004;
+
     protected override async void OnCreate(Bundle savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
 
-        // Inicialización de Essentials para MAUI
+        Console.WriteLine("🚀 Aplicación iniciada...");
+
         Platform.Init(this, savedInstanceState);
 
-        // Crear canal de notificaciones
+
         CreateNotificationChannel();
-
-        // Solicitar permisos necesarios
         await RequestPermissionsAsync();
-
-        // Crear carpeta específica de la aplicación
         CreateAppFolder();
-
-        // Solicitar exclusión de optimización de batería
         RequestIgnoreBatteryOptimizations();
+        CheckPhoneStatePermission();
+        RequestInstallPackagesPermission();
+
+        // 🔍 Verificar actualizaciones en GitHub
+        Console.WriteLine("🔍 Buscando actualizaciones...");
+        var updateService = new UpdateService();
+        var updateInfo = await updateService.CheckForUpdate();
+
+        if (updateInfo.HasUpdate)
+        {
+            ShowUpdateDialog(updateInfo.ApkUrl);
+        }
+    }
+
+    private void ShowUpdateDialog(string apkUrl)
+    {
+        RunOnUiThread(() =>
+        {
+            var builder = new AlertDialog.Builder(this);
+            builder.SetTitle("Nueva versión disponible");
+            builder.SetMessage("Hay una nueva actualización disponible. Es necesario actualizar para continuar usando la aplicación.");
+            builder.SetPositiveButton("Actualizar", async (sender, args) =>
+            {
+                var updateService = new UpdateService();
+                await updateService.DownloadAndInstallUpdate(apkUrl, this);
+            });
+
+            builder.SetCancelable(false);
+            builder.Show();
+        });
+    }
+
+
+    private void CheckPhoneStatePermission()
+    {
+#if ANDROID
+        if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
+        {
+            if (ContextCompat.CheckSelfPermission(this, Manifest.Permission.ReadPhoneState)
+                != Permission.Granted)
+            {
+                ActivityCompat.RequestPermissions(
+                    this,
+                    new[] { Manifest.Permission.ReadPhoneState },
+                    PHONE_STATE_PERMISSION_CODE
+                );
+            }
+        }
+#endif
+    }
+
+    private void RequestInstallPackagesPermission()
+    {
+        if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
+        {
+            if (!PackageManager.CanRequestPackageInstalls())
+            {
+                Console.WriteLine("⚠️ No tiene permiso para instalar paquetes. Solicitando...");
+
+                var intent = new Intent(Android.Provider.Settings.ActionManageUnknownAppSources);
+                intent.SetData(Android.Net.Uri.Parse("package:" + PackageName));
+
+                StartActivityForResult(intent, INSTALL_PERMISSION_REQUEST_CODE);
+            }
+            else
+            {
+                Console.WriteLine("✅ Permiso para instalar paquetes concedido.");
+            }
+        }
+
+        // ⚠️ Android 14 requiere una confirmación manual adicional
+        if (Build.VERSION.SdkInt >= (BuildVersionCodes)34) // Android 14 (API 34)
+        {
+            Console.WriteLine("⚠️ En Android 14, el usuario debe permitir instalaciones desde fuentes desconocidas.");
+            Console.WriteLine("💡 Indique al usuario que active esta opción en: Ajustes > Apps > Acceso especial.");
+        }
     }
 
     public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
     {
         base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
         Platform.OnRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == PHONE_STATE_PERMISSION_CODE)
+        {
+            if (grantResults.Length > 0 && grantResults[0] == Permission.Granted)
+            {
+                Console.WriteLine("✅ Permiso READ_PHONE_STATE concedido");
+            }
+            else
+            {
+                Toast.MakeText(this, "", ToastLength.Long).Show();
+            }
+        }
     }
 
     private async Task RequestPermissionsAsync()
     {
-        // Solicitar permisos de ubicación
         var locationStatus = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
         if (locationStatus != PermissionStatus.Granted)
         {
@@ -86,13 +174,14 @@ public class MainActivity : MauiAppCompatActivity
             Toast.MakeText(this, "Permiso de ubicación denegado", ToastLength.Short).Show();
         }
 
-        // Solicitar permisos de notificaciones (Android 13+)
-        if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu) 
+        if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu)
         {
-            RequestNotificationPermission();
+            if (ContextCompat.CheckSelfPermission(this, Manifest.Permission.PostNotifications) != Permission.Granted)
+            {
+                RequestPermissions(new[] { Manifest.Permission.PostNotifications }, 1002);
+            }
         }
 
-        // Solicitar permisos de almacenamiento si son necesarios
         if (Build.VERSION.SdkInt >= BuildVersionCodes.R)
         {
             if (!Android.OS.Environment.IsExternalStorageManager)
@@ -102,16 +191,9 @@ public class MainActivity : MauiAppCompatActivity
         }
     }
 
-    private void RequestNotificationPermission()
-    {
-        if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu)
-        {
-            RequestPermissions(new[] { Manifest.Permission.PostNotifications }, 1002);
-        }
-    }
     private void CreateNotificationChannel()
     {
-        if (Build.VERSION.SdkInt >= BuildVersionCodes.O) 
+        if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
         {
             var channelName = "DISMOGT_REPORTES_Channel";
             var channelDescription = "Canal para las notificaciones de ubicación";
@@ -127,13 +209,19 @@ public class MainActivity : MauiAppCompatActivity
         }
     }
 
-
     private void RequestManageStoragePermission()
     {
         if (Build.VERSION.SdkInt >= BuildVersionCodes.R)
         {
-            var intent = new Intent(Android.Provider.Settings.ActionManageAllFilesAccessPermission);
-            StartActivity(intent);
+            try
+            {
+                var intent = new Intent(Android.Provider.Settings.ActionManageAllFilesAccessPermission);
+                StartActivity(intent);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error al solicitar permiso de almacenamiento: {ex.Message}");
+            }
         }
     }
 
@@ -141,15 +229,21 @@ public class MainActivity : MauiAppCompatActivity
     {
         if (Build.VERSION.SdkInt >= BuildVersionCodes.M)
         {
-            var intent = new Intent();
-            string packageName = this.PackageName;
+            var packageName = this.PackageName;
             PowerManager pm = (PowerManager)this.GetSystemService(Context.PowerService);
 
             if (!pm.IsIgnoringBatteryOptimizations(packageName))
             {
-                intent.SetAction(Android.Provider.Settings.ActionRequestIgnoreBatteryOptimizations);
-                intent.SetData(Android.Net.Uri.Parse("package:" + packageName));
-                StartActivity(intent);
+                try
+                {
+                    var intent = new Intent(Android.Provider.Settings.ActionRequestIgnoreBatteryOptimizations);
+                    intent.SetData(Android.Net.Uri.Parse("package:" + packageName));
+                    StartActivity(intent);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Error al solicitar ignorar optimización de batería: {ex.Message}");
+                }
             }
         }
     }
@@ -175,5 +269,4 @@ public class MainActivity : MauiAppCompatActivity
             Console.WriteLine($"❌ Error al crear la carpeta: {ex.Message}");
         }
     }
-
 }

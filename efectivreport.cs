@@ -49,12 +49,21 @@ namespace DISMOGT_REPORTES
                 {
 
                     // Nueva consulta para obtener la venta
-                    string ventaConsulta = $"SELECT 'Q ' || ROUND(SUM((MON_TOT - DET.MON_DSC) * 1.12), 2) AS VENTA " +
+                    string ventaConsulta = $"SELECT ROUND(SUM((MON_TOT - DET.MON_DSC) * 1.12), 2) AS VENTA\r\n" +
                                             "FROM ERPADMIN_ALFAC_DET_PED DET " +
                                             "JOIN ERPADMIN_ALFAC_ENC_PED ENC ON DET.NUM_PED = ENC.NUM_PED " +
                                             "JOIN ERPADMIN_ARTICULO PROD ON PROD.COD_ART = DET.COD_ART " +
                                             "WHERE ESTADO <> 'C' AND FEC_PED LIKE ? || '%' " +
                                             "GROUP BY FEC_PED";
+
+                    var ventaResultString = conn.ExecuteScalar<string>(ventaConsulta, fechaBuscada);
+
+                    // Convertir ventaResult a double
+                    double montoVenta;
+                    if (!double.TryParse(ventaResultString, out montoVenta))
+                    {
+                        montoVenta = 0; // Si la conversión falla, se asigna 0
+                    }
 
                     // Obtener datos de venta
                     var ventaResult = conn.ExecuteScalar<string>(ventaConsulta, fechaBuscada);
@@ -89,23 +98,23 @@ namespace DISMOGT_REPORTES
                      data = "";
                     foreach (var ruta in datosRutas)
                     {
-
+                        double dropsize = (ruta.pedidos_local > 0) ? (montoVenta / ruta.pedidos_local) : 0;
 
                         data += $"\nFecha: {fechaBuscada}\n";
-                        data += $"Día: {diaSemana}\n";
+                        data += $"Dia: {diaSemana}\n";
                         data += $"Ruta: {ruta.RUTA,-25}\n";
                         data += $"\nPedidos: {ruta.pedidos_local}\n";
-                        data += $"Venta: {ventaResult}\n";
+                        data += $"Venta: Q {ventaResult}\n";
+                        data += $"Dropsize: Q {dropsize.ToString("0.00")}\n";
                         data += $"Clientes en el rutero: {ruta.ClientesRutero}\n";
                         data += $"Clientes con venta: {cuentaClientes}\n";
                         data += $"Clientes visitados: {ruta.VisitasRealizadas} \n"; ;
-                        data += $"\nEfectividad de ventas: {ruta.EfectividadVTA} \n";
-                        data += $"Dropsize: \n";
 
 
-                        // Calcular la efectividad de visita 
+                         
+                        // Calcular la efectividad de vi sita  
                         double efectividadVisita = (double)ruta.VisitasRealizadas / ruta.ClientesRutero * 100;
-                        data += $"Efectividad de visita: {efectividadVisita.ToString("0.00")}% \n";
+                        data += $"\nEfectividad de visita: {efectividadVisita.ToString("0.00")}% \n";
                         data += $"Clientes con venta fuera de ruta: {cuenta}\n";
                         data += $"Clientes visitados fuera de ruta: {cuentaVisita}\n";
                     }
