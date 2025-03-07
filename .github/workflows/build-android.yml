@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write  
 
 jobs:
   build-android:
@@ -32,6 +32,8 @@ jobs:
       - name: 🔄 Restaurar dependencias
         run: dotnet restore
 
+      - name: 🔨 Compilar la aplicación para Android
+        run: dotnet publish -f net8.0-android -c Release -o publish_output
       - name: 📌 Calcular versión dinámica y guardarla
         id: version
         run: |
@@ -87,8 +89,9 @@ jobs:
       - name: 📦 Empaquetar APK con nombre personalizado
         run: |
           cd publish_output
-          APK_NAME=$(ls *.apk | head -n 1)
-          mv "$APK_NAME" "../DISMOGT_REPORTES_v$VERSION_NAME.apk"
+          VERSION=$(echo "v1.0.${{ github.run_number }}")  # Obtener la versión del release
+          mv com.companyname.*.apk "DISMOGT_REPORTES_${VERSION}.apk"
+
       - name: 📤 Subir APK como artefacto
         uses: actions/upload-artifact@v4
         with:
