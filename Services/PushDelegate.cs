@@ -1,17 +1,27 @@
 ﻿using System;
-using System.Threading;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
-using Shiny.Push;
+using Shiny;
 using Shiny.Jobs;
-using DISMO_REPORTES.Services;
+using Shiny.Locations;
+using Shiny.Push;
 
 namespace DISMOGT_REPORTES
 {
     public class PushDelegate : IPushDelegate
     {
+        private readonly IJobManager _jobManager;
+        private readonly IGpsManager _gpsManager;
+
+        public PushDelegate(IJobManager jobManager, IGpsManager gpsManager)
+        {
+            _jobManager = jobManager;
+            _gpsManager = gpsManager;
+        }
+
         public Task OnEntry(PushNotification push)
         {
-            Console.WriteLine("📩 [Push Notificación] ¡Notificación ABIERTA por el usuario!");
+            Console.WriteLine("📩 [PushDelegate] Notificación abierta por el usuario.");
 
             if (push?.Data != null)
             {
@@ -24,9 +34,9 @@ namespace DISMOGT_REPORTES
             return Task.CompletedTask;
         }
 
-        public Task OnReceived(PushNotification push)
+        public async Task OnReceived(PushNotification push)
         {
-            Console.WriteLine("📲 [Push Notificación] ¡Notificación RECIBIDA en segundo plano!");
+            Console.WriteLine("📲 [PushDelegate] Notificación recibida en segundo plano o con la app cerrada.");
 
             if (push?.Data != null)
             {
@@ -34,69 +44,45 @@ namespace DISMOGT_REPORTES
                 {
                     Console.WriteLine($"🔹 {kvp.Key}: {kvp.Value}");
                 }
+
+                // ✅ Asegurar que siempre se maneje la notificación, incluso si no tiene datos específicos
+                Console.WriteLine("📍 [PushDelegate] Procesando notificación en segundo plano...");
+
+                // 🚀 Ejecutar LocationJob en segundo plano si la notificación lo requiere
+                if (push.Data.ContainsKey("tipo") && push.Data["tipo"] == "location_update")
+                {
+                    Console.WriteLine("📍 [PushDelegate] Activando LocationJob...");
+                    var result = await _jobManager.Run("LocationJob");
+                    Console.WriteLine($"✅ [PushDelegate] LocationJob ejecutado con estado: {result}");
+
+                    // 📡 Obtener ubicación si se requiere
+                    Console.WriteLine("📡 [PushDelegate] Intentando obtener ubicación...");
+                    var gpsReading = await _gpsManager.GetCurrentPosition();
+                    if (gpsReading != null)
+                    {
+                        Console.WriteLine($"📍 Ubicación obtenida: Latitud={gpsReading.Position.Latitude}, Longitud={gpsReading.Position.Longitude}");
+                    }
+                    else
+                    {
+                        Console.WriteLine("❌ No se pudo obtener la ubicación.");
+                    }
+                }
             }
-
-            // Obtener directamente la instancia de LocationJob
-            var locationJob = Shiny.Hosting.Host.Current.Services.GetRequiredService<LocationJob>();
-
-            // Ejecutar el job directamente sin usar el IJobManager
-            Task.Run(async () =>
+            else
             {
-                try
-                {
-                    // Crear un JobInfo con el constructor correcto 
-                    // La firma parece ser: JobInfo(string identifier, Type type, bool repeat, Dictionary<string, string>? parameters, InternetAccess internet, bool charging, bool deviceIdle, bool batteryNotLow)
-                    var jobInfo = new JobInfo(
-                        "LocationJob",                // identifier
-                        typeof(LocationJob),          // type
-                        false,                        // repeat (no es necesario ya que lo ejecutamos directamente)
-                        null,                         // parameters (no es necesario)
-                        InternetAccess.None,          // internet (no requerimos específicamente acceso a Internet)
-                        false,                        // charging (no requerimos que esté cargando)
-                        false,                        // deviceIdle (no requerimos que el dispositivo esté inactivo)
-                        false                         // batteryNotLow (no requerimos que la batería no esté baja)
-                    );
-
-                    // Ejecutar directamente el LocationJob
-                    await locationJob.Run(jobInfo, CancellationToken.None);
-                    Console.WriteLine("🚀 LocationJob ejecutado directamente desde PushDelegate.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"❌ Error al ejecutar LocationJob: {ex.Message}");
-                }
-            });
-
-            return Task.CompletedTask;
+                Console.WriteLine("⚠️ [PushDelegate] Notificación recibida sin datos.");
+            }
         }
 
         public Task OnNewToken(string token)
         {
-            Console.WriteLine($"🔄 [Push Notificación] Nuevo token generado: {token}");
-
-            // Ejecutar el envío del token en una tarea aparte
-            Task.Run(async () =>
-            {
-                try
-                {
-                    // Obtener la instancia de GpsService para enviar el token
-                    var gpsService = Shiny.Hosting.Host.Current.Services.GetRequiredService<DISMO_REPORTES.Services.GpsService>();
-
-                    // Enviar el token al servidor
-                    await gpsService.SendTokenToServerAsync(token);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"❌ Error al enviar el token al servidor: {ex.Message}");
-                }
-            });
-
+            Console.WriteLine($"🔄 [PushDelegate] Nuevo token recibido: {token}");
             return Task.CompletedTask;
         }
 
         public Task OnUnRegistered(string reason)
         {
-            Console.WriteLine($"🚫 [Push Notificación] Token eliminado o usuario desuscrito. Razón: {reason}");
+            Console.WriteLine($"🚫 [PushDelegate] Token eliminado. Razón: {reason}");
             return Task.CompletedTask;
         }
     }

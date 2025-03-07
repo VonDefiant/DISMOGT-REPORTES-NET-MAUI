@@ -25,13 +25,7 @@ namespace DISMO_REPORTES.Services
 
         public async Task Run(JobInfo jobInfo, CancellationToken cancellationToken)
         {
-            Console.WriteLine($"🛰 LocationJob iniciado con ID: {jobInfo.Identifier}");
-
-            if (!jobInfo.Identifier.Contains("LocationJob"))
-            {
-                Console.WriteLine($"⚠️ El Job no tiene el identificador correcto. ID recibido: {jobInfo.Identifier}");
-                return;
-            }
+            Console.WriteLine("🛰 LocationJob iniciado.");
 
             // Notificación de inicio del servicio
             TrySendNotificationAsync("📢 DISMOGT REPORTES", "Cada no que recibes te acerca más a un sí.");
@@ -63,7 +57,6 @@ namespace DISMO_REPORTES.Services
 
             Console.WriteLine(" LocationJob finalizado.");
         }
-
 
         private async Task<Location> GetLocationSafeAsync()
         {
