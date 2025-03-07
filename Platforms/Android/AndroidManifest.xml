@@ -19,16 +19,29 @@
             android:resource="@color/notification_color"/>
 		<meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="default_channel"/>
+            android:value="default_channel" />
+
+		<!-- 🔔 Asegurar que se use Shiny como receptor de notificaciones -->
+		<receiver android:enabled="true" android:exported="true" android:name="com.shiny.push.ShinyFirebaseReceiver">
+			<intent-filter>
+				<action android:name="com.google.firebase.MESSAGING_EVENT"/>
+			</intent-filter>
+		</receiver>
 
 		<!-- Receptor para manejar reinicios del dispositivo -->
 		<receiver android:enabled="true" android:exported="true" android:name="com.shiny.ShinyBootReceiver">
-			<intent-filter>	
+			<intent-filter>
 				<action android:name="android.intent.action.BOOT_COMPLETED"/>
 				<action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
 			</intent-filter>
 		</receiver>
 
+		<!-- Y asegúrate de que esté declarado el servicio: -->
+		<service
+			android:name=".Platforms.Android.LocationForegroundService"
+			android:enabled="true"
+			android:exported="false"
+			android:foregroundServiceType="location" />
 		<!-- Configuración del FileProvider -->
 		<provider
             android:name="androidx.core.content.FileProvider"
@@ -37,13 +50,6 @@
             android:exported="false">
 			<meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths"/>
 		</provider>
-
-		<!-- 🚀 Receptor de notificaciones para Shiny -->
-		<receiver android:enabled="true" android:exported="true" android:name="com.shiny.push.ShinyFirebaseReceiver">
-			<intent-filter>
-				<action android:name="com.google.firebase.MESSAGING_EVENT"/>
-			</intent-filter>
-		</receiver>
 
 	</application>
 
@@ -77,7 +83,7 @@
 	<!-- Permisos de notificaciones -->
 	<uses-permission android:name="com.google.android.c2dm.permission.RECEIVE"/>
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-	<uses-permission android:name="com.google.android.c2dm.permission.RECEIVE"/>
+
 
 	<!-- Permisos adicionales para compatibilidad -->
 	<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
