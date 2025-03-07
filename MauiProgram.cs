@@ -108,7 +108,7 @@ namespace DISMOGT_REPORTES
                     }
                 },
                 null,
-                TimeSpan.FromMinutes(1),      // Primera ejecución después de 1 minuto
+                TimeSpan.FromMinutes(1),      // Primera ejecución después de 1 minut
                 TimeSpan.FromMinutes(15));    // Después cada 15 minutos
 
                 Console.WriteLine("⏰ Timer periódico inicializado correctamente");
