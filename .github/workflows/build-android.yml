@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  
+  contents: write
 
 jobs:
   build-android:
@@ -32,8 +32,6 @@ jobs:
       - name: 🔄 Restaurar dependencias
         run: dotnet restore
 
-      - name: 🔨 Compilar la aplicación para Android
-        run: dotnet publish -f net8.0-android -c Release -o publish_output
       - name: 📌 Calcular versión dinámica y guardarla
         id: version
         run: |
@@ -49,6 +47,7 @@ jobs:
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
           echo "$VERSION_NAME" > version.txt
           echo "Nueva versión generada: $VERSION_NAME"
+
       - name: 🔄 Subir archivo de versión
         uses: actions/upload-artifact@v4
         with:
@@ -65,6 +64,7 @@ jobs:
             echo "❌ No se encontró AndroidManifest.xml en $MANIFEST_PATH"
             exit 1
           fi
+
       - name: 📌 Hacer commit del cambio en AndroidManifest.xml
         run: |
           git config --global user.email "github-actions@github.com"
@@ -72,25 +72,39 @@ jobs:
           git add Platforms/Android/AndroidManifest.xml
           git commit -m "Actualizar versionName a $VERSION_NAME"
           git push
-      - name: 🔑 Restaurar Keystore
-        run: echo "${{ secrets.DISMOGT_KEYSTORE_B64 }}" | base64 --decode > dismogt-key.jks
 
-      - name: 🔨 Compilar la aplicación para Android con firma
+      - name: 🔧 Verificar Java antes de compilar
+        run: java -version
+
+      - name: 🔑 Configurar y restaurar la Keystore
         run: |
-          dotnet publish -f net8.0-android -c Release -o publish_output \
-            /p:AndroidKeyStore=True \
-            /p:AndroidSigningKeyAlias=${{ secrets.DISMOGT_KEY_ALIAS }} \
-            /p:AndroidSigningKeyPass=${{ secrets.DISMOGT_KEY_PASSWORD }} \
-            /p:AndroidSigningStorePass=${{ secrets.DISMOGT_KEYSTORE_PASSWORD }} \
-            /p:AndroidSigningKeyStore=dismogt-key.jks
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
+          echo "storeFile=$(pwd)/release.keystore" >> $GITHUB_ENV
+          echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+          echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> $GITHUB_ENV
+          echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> $GITHUB_ENV
+
+      - name: 🛠 Verificar archivo Keystore
+        run: ls -l release.keystore || echo "❌ No se encontró el archivo release.keystore"
+
+      - name: 🔨 Compilar sin firmar la APK
+        run: dotnet publish -f net8.0-android -c Release -o publish_output
+
       - name: 📂 Verificar archivos generados
         run: find publish_output -name "*.apk" || echo "⚠️ No se encontró ningún APK"
+
+      - name: 🔑 Firmar la APK
+        run: |
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+            -keystore release.keystore -storepass ${{ secrets.ANDROID_KEYSTORE_PASSWORD }} \
+            -keypass ${{ secrets.ANDROID_KEY_PASSWORD }} \
+            publish_output/*.apk ${{ secrets.ANDROID_KEY_ALIAS }}
 
       - name: 📦 Empaquetar APK con nombre personalizado
         run: |
           cd publish_output
-          VERSION=$(echo "v1.0.${{ github.run_number }}")  # Obtener la versión del release
-          mv com.companyname.*.apk "DISMOGT_REPORTES_${VERSION}.apk"
+          APK_NAME=$(ls *.apk | head -n 1)
+          mv "$APK_NAME" "../DISMOGT_REPORTES_v$VERSION_NAME.apk"
 
       - name: 📤 Subir APK como artefacto
         uses: actions/upload-artifact@v4
