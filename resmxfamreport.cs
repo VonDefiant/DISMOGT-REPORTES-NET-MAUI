@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using SQLite;
@@ -22,16 +22,16 @@ namespace DISMOGT_REPORTES
             {
                 if (!File.Exists(_dbPath))
                 {
-                    throw new FileNotFoundException($"No se encontr� la base de datos en la ruta especificada: {_dbPath}");
+                    throw new FileNotFoundException($"No se encontró la base de datos en la ruta especificada: {_dbPath}");
                 }
 
                 using (var conn = new SQLiteConnection(_dbPath))
                 {
-                    // Cuenta los clientes con venta seg�n la base de datos
+                    // Cuenta los clientes con venta según la base de datos
                     var clientes = conn.Query<VisitaDocumento>("SELECT CLIENTE FROM ERPADMIN_VISITA_DOCUMENTO WHERE INICIO LIKE ?", mfecha + "%");
                     CuentaClientes = clientes.Count;
 
-                    conn.CreateTable<ReporteData>(); // Asegurar que la tabla est� creada
+                    conn.CreateTable<ReporteData>(); // Asegurar que la tabla está creada
 
                     var datosConsulta = RealizarConsulta(conn, mfecha, companiadm);
 
@@ -46,7 +46,8 @@ namespace DISMOGT_REPORTES
             }
         }
 
-        private List<ReporteData> RealizarConsulta(SQLiteConnection conn, string fechaBuscada, string companiadm)
+        // Método ahora público para que GpsService pueda accederlo
+        public List<ReporteData> RealizarConsulta(SQLiteConnection conn, string fechaBuscada, string companiadm)
         {
             const string consultaReporte = @"
             SELECT 
@@ -100,5 +101,11 @@ namespace DISMOGT_REPORTES
         public string VENTA { get; set; }
         public int NUMERO_CLIENTES { get; set; }
         public int TotalClientes { get; set; }
+    }
+
+    // Clase necesaria para la consulta
+    public class VisitaDocumento
+    {
+        public string CLIENTE { get; set; }
     }
 }

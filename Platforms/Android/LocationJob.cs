@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Shiny.Jobs;
 using Shiny.Notifications;
 using Microsoft.Extensions.Logging;
+using DISMOGT_REPORTES.Models;
 
 namespace DISMO_REPORTES.Services
 {
@@ -35,15 +36,15 @@ namespace DISMO_REPORTES.Services
             try
             {
                 // Obtener la ubicación actual
-                var location = await GetLocationSafeAsync();
-                if (location == null) return;
+                var locationResult = await GetLocationSafeAsync();
+                if (locationResult.Location == null) return;
 
-                Console.WriteLine($"📍 Ubicación obtenida: Latitud={location.Latitude}, Longitud={location.Longitude}");
+                Console.WriteLine($"📍 Ubicación obtenida: Latitud={locationResult.Location.Latitude}, Longitud={locationResult.Location.Longitude}");
 
                 if (IsCancelled(cancellationToken, "LocationJob cancelado antes de enviar la ubicación.")) return;
 
                 // Intentar enviar la ubicación al servidor
-                await TrySendLocationAsync(location, cancellationToken);
+                await TrySendLocationAsync(locationResult.Location, cancellationToken, locationResult.IsSuspicious, locationResult.SuspiciousReason);
 
                 if (IsCancelled(cancellationToken, "LocationJob cancelado antes de enviar la notificación.")) return;
 
@@ -58,7 +59,7 @@ namespace DISMO_REPORTES.Services
             Console.WriteLine(" LocationJob finalizado.");
         }
 
-        private async Task<Location> GetLocationSafeAsync()
+        private async Task<LocationResult> GetLocationSafeAsync()
         {
             try
             {
@@ -67,17 +68,17 @@ namespace DISMO_REPORTES.Services
             catch (Exception ex)
             {
                 LogError(ex, "Error obteniendo la ubicación");
-                return null;
+                return new LocationResult { Location = null, IsSuspicious = false, SuspiciousReason = "" };
             }
         }
 
-        private async Task TrySendLocationAsync(Location location, CancellationToken cancellationToken)
+        private async Task TrySendLocationAsync(Location location, CancellationToken cancellationToken, bool isSuspicious = false, string suspiciousReason = "")
         {
             try
             {
                 if (IsCancelled(cancellationToken, "⏹ Envío de ubicación cancelado antes de comenzar.")) return;
 
-                await _gpsService.SendLocationToServerAsync(location, AppConfig.IdRuta);
+                await _gpsService.SendLocationToServerAsync(location, AppConfig.IdRuta, isSuspicious, suspiciousReason);
                 Console.WriteLine("📡 Ubicación enviada correctamente.");
             }
             catch (Exception ex)

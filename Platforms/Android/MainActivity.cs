@@ -46,6 +46,7 @@ namespace DISMOGT_REPORTES
     {
         private const int PHONE_STATE_PERMISSION_CODE = 1003;
         private const int INSTALL_PERMISSION_REQUEST_CODE = 1004;
+        private const int STORAGE_PERMISSION_CODE = 1005; // Nuevo código para permisos de almacenamiento
 
         protected override async void OnCreate(Bundle savedInstanceState)
         {
@@ -229,13 +230,27 @@ namespace DISMOGT_REPORTES
                 }
                 else
                 {
-                    Toast.MakeText(this, "", ToastLength.Long).Show();
+
+                }
+            }
+            else if (requestCode == STORAGE_PERMISSION_CODE)
+            {
+                if (grantResults.Length > 0 && grantResults[0] == Permission.Granted)
+                {
+                    Console.WriteLine("✅ Permisos de almacenamiento concedidos");
+                    // Intentar crear la carpeta ahora que tenemos los permisos
+                    CreateAppFolder();
+                }
+                else
+                {
+ 
                 }
             }
         }
 
         private async Task RequestPermissionsAsync()
         {
+            // Permisos de ubicación existentes
             var locationStatus = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
             if (locationStatus != PermissionStatus.Granted)
             {
@@ -251,11 +266,96 @@ namespace DISMOGT_REPORTES
                 }
             }
 
+            // Permisos de notificación existentes
             if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu)
             {
                 if (ContextCompat.CheckSelfPermission(this, Manifest.Permission.PostNotifications) != Permission.Granted)
                 {
                     RequestPermissions(new[] { Manifest.Permission.PostNotifications }, 1002);
+                }
+            }
+
+            // NUEVO: Permisos de almacenamiento - Método MAUI
+            var storageReadStatus = await Permissions.CheckStatusAsync<Permissions.StorageRead>();
+            if (storageReadStatus != PermissionStatus.Granted)
+            {
+                storageReadStatus = await Permissions.RequestAsync<Permissions.StorageRead>();
+            }
+
+            var storageWriteStatus = await Permissions.CheckStatusAsync<Permissions.StorageWrite>();
+            if (storageWriteStatus != PermissionStatus.Granted)
+            {
+                storageWriteStatus = await Permissions.RequestAsync<Permissions.StorageWrite>();
+            }
+
+            // NUEVO: Para Android 10 (API 29+) también solicitar permisos vía Android API tradicional
+            if (Build.VERSION.SdkInt >= BuildVersionCodes.Q)
+            {
+                RequestStoragePermissions();
+            }
+
+            // NUEVO: Para Android 11+ (API 30+), gestionar el acceso a MANAGE_EXTERNAL_STORAGE
+            if (Build.VERSION.SdkInt >= BuildVersionCodes.R)
+            {
+                RequestManageExternalStoragePermission();
+            }
+        }
+
+        // NUEVO: Método para solicitar permisos de almacenamiento
+        private void RequestStoragePermissions()
+        {
+            // Verificar si ya tenemos los permisos
+            if (ContextCompat.CheckSelfPermission(this, Manifest.Permission.ReadExternalStorage) != Permission.Granted ||
+                ContextCompat.CheckSelfPermission(this, Manifest.Permission.WriteExternalStorage) != Permission.Granted)
+            {
+                // Solicitar permisos
+                ActivityCompat.RequestPermissions(
+                    this,
+                    new[]
+                    {
+                        Manifest.Permission.ReadExternalStorage,
+                        Manifest.Permission.WriteExternalStorage
+                    },
+                    STORAGE_PERMISSION_CODE
+                );
+            }
+            else
+            {
+                Console.WriteLine("✅ Permisos de almacenamiento ya concedidos");
+            }
+        }
+
+        // NUEVO: Método para solicitar permiso MANAGE_EXTERNAL_STORAGE
+        private void RequestManageExternalStoragePermission()
+        {
+            // Para Android 11+, necesitamos MANAGE_EXTERNAL_STORAGE para tener acceso completo
+            if (Build.VERSION.SdkInt >= BuildVersionCodes.R)
+            {
+                if (!Android.OS.Environment.IsExternalStorageManager)
+                {
+                    try
+                    {
+                        Intent intent = new Intent(Android.Provider.Settings.ActionManageAppAllFilesAccessPermission);
+                        intent.SetData(Android.Net.Uri.Parse("package:" + PackageName));
+                        StartActivity(intent);
+
+                        Toast.MakeText(this, "Por favor, otorga permiso para administrar todos los archivos", ToastLength.Long).Show();
+                    }
+                    catch (Exception ex)
+                    {
+                        // Si hay algún problema con el intent específico, intentar con el intent general
+                        try
+                        {
+                            Intent intent = new Intent(Android.Provider.Settings.ActionManageAllFilesAccessPermission);
+                            StartActivity(intent);
+
+                            Toast.MakeText(this, "Por favor, busca la aplicación y otorga permiso para administrar todos los archivos", ToastLength.Long).Show();
+                        }
+                        catch (Exception innerEx)
+                        {
+                            Console.WriteLine($"❌ Error al solicitar MANAGE_EXTERNAL_STORAGE: {innerEx.Message}");
+                        }
+                    }
                 }
             }
         }

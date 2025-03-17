@@ -14,11 +14,17 @@ namespace DISMOGT_REPORTES.Models
 
         public double Latitude { get; set; }
         public double Longitude { get; set; }
-        public string Timestamp { get; set; } 
+        public string Timestamp { get; set; }
         public bool IsSuspicious { get; set; }
+
         [NotNull]
         public string IdRuta { get; set; }
         public double BatteryLevel { get; set; }
 
+        // Nuevo campo para almacenar los datos del reporte serializados como JSON
+        public string ReportDataJson { get; set; }
+
+        // Nuevo campo para almacenar el motivo de la sospecha
+        public string SuspiciousReason { get; set; }
     }
 }
