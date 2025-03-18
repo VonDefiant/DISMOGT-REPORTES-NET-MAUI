@@ -1,6 +1,4 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionName="0.0.54" package="com.dismogt.app" android:versionCode="2">
-	<application android:allowBackup="true" android:icon="@mipmap/appicon" android:supportsRtl="true" android:label="DISMOGT REPORTES">
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     android:versionName="0.0.54"
     package="com.dismogt.app"
@@ -18,7 +16,7 @@
 		<meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="default_channel" />
 		<!-- 🔔 Asegurar que se use Shiny como receptor de notificaciones -->
 		<receiver android:enabled="true" android:exported="true" android:name="com.shiny.push.ShinyFirebaseReceiver">
-			<intent-filter>
+			<intent-filter>	
 				<action android:name="com.google.firebase.MESSAGING_EVENT" />
 			</intent-filter>
 		</receiver>
