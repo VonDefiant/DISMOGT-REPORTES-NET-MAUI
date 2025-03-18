@@ -26,5 +26,9 @@ namespace DISMOGT_REPORTES.Models
 
         // Nuevo campo para almacenar el motivo de la sospecha
         public string SuspiciousReason { get; set; }
+
+        // Nuevos campos para estado de movimiento
+        public bool IsMoving { get; set; }
+        public string MovementContext { get; set; }
     }
 }

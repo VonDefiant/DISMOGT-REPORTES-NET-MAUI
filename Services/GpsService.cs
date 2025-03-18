@@ -15,7 +15,7 @@ using DISMOGT_REPORTES; // Para acceder a ResMxFamReport
 using System.IO; // Para manejo de archivos
 using SQLite; // Para conexión a SQLite
 using Location = Microsoft.Maui.Devices.Sensors.Location; // Usar un alias explícito
-using AndroidLocation = Android.Locations.Location; // Alias para Android Location
+using AndroidLocation = Android.Locations.Location;
 
 namespace DISMO_REPORTES.Services
 {
@@ -28,7 +28,7 @@ namespace DISMO_REPORTES.Services
 
         private readonly IGpsManager _gpsManager;
         private LocationSecurityService _securityService;
-
+        private LocationFusionService _fusionService;
         public GpsService(IGpsManager gpsManager)
         {
             _gpsManager = gpsManager;
@@ -38,11 +38,15 @@ namespace DISMO_REPORTES.Services
             {
                 var context = Android.App.Application.Context;
                 _securityService = new LocationSecurityService(context);
-                Console.WriteLine("✅ Servicio de seguridad de ubicación inicializado");
+
+                // Inicializar el nuevo servicio de fusión
+                _fusionService = new LocationFusionService(context);
+
+                Console.WriteLine("✅ Servicios de seguridad y fusión de ubicación inicializados");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Error al inicializar servicio de seguridad: {ex.Message}");
+                Console.WriteLine($"❌ Error al inicializar servicios: {ex.Message}");
             }
         }
 
@@ -53,14 +57,12 @@ namespace DISMO_REPORTES.Services
                 var location = new Location
                 {
                     Latitude = reading.Position.Latitude,
-                    Longitude = reading.Position.Longitude
-                };
-
-                // Convertir Location de Maui a Android.Locations.Location
-                AndroidLocation androidLocation = new AndroidLocation("gps")
-                {
-                    Latitude = reading.Position.Latitude,
-                    Longitude = reading.Position.Longitude
+                    Longitude = reading.Position.Longitude,
+                    Accuracy = null,
+                    Altitude = reading.Altitude,
+                    Course = reading.Heading,
+                    Speed = reading.Speed,
+                    Timestamp = reading.Timestamp.DateTime
                 };
 
                 Console.WriteLine($"📍 GPS Reading: Lat={location.Latitude}, Lng={location.Longitude}");
@@ -69,7 +71,66 @@ namespace DISMO_REPORTES.Services
                 bool isSuspicious = false;
                 string suspiciousReason = "";
 
-                if (_securityService != null)
+                // Convertir Location de Maui a Android.Locations.Location
+                AndroidLocation androidLocation = null;
+                try
+                {
+                    androidLocation = new AndroidLocation("gps")
+                    {
+                        Latitude = location.Latitude,
+                        Longitude = location.Longitude
+                    };
+
+                    if (location.Accuracy.HasValue)
+                        androidLocation.Accuracy = (float)location.Accuracy.Value;
+
+                    if (location.Altitude.HasValue)
+                        androidLocation.Altitude = location.Altitude.Value;
+
+                    if (location.Speed.HasValue)
+                        androidLocation.Speed = (float)location.Speed.Value;
+
+                    if (location.Course.HasValue)
+                        androidLocation.Bearing = (float)location.Course.Value;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Error al convertir ubicación: {ex.Message}");
+                }
+
+                // Aplicar fusión de datos GPS si está disponible
+                if (_fusionService != null)
+                {
+                    try
+                    {
+                        var fusedResult = await _fusionService.GetFusedLocationAsync(location);
+                        if (fusedResult != null && fusedResult.Location != null)
+                        {
+                            Console.WriteLine($"🔄 Fusión de datos aplicada");
+                            location = fusedResult.Location;
+                            // Obtener y usar información de movimiento
+                            bool isMoving = fusedResult.IsMoving;
+                            string contextName = fusedResult.MovementContextName;
+
+                            Console.WriteLine($"🧠 Estado actual: {(isMoving ? "En movimiento" : "Estacionario")}");
+                            Console.WriteLine($"🧠 Contexto: {contextName}");
+
+                            // Si la fusión detectó sospecha, actualizamos las banderas
+                            if (fusedResult.IsSuspicious)
+                            {
+                                isSuspicious = true;
+                                suspiciousReason = fusedResult.SuspiciousReason ?? "";
+                                Console.WriteLine($"⚠️ La fusión de datos detectó comportamiento sospechoso: {suspiciousReason}");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"❌ Error en la fusión de datos GPS: {ex.Message}");
+                    }
+                }
+
+                if (_securityService != null && androidLocation != null)
                 {
                     try
                     {
@@ -223,6 +284,10 @@ namespace DISMO_REPORTES.Services
         {
             if (location == null) return;
 
+            // Valores por defecto para estado de movimiento
+            bool isMoving = false;
+            string movementContextName = "Unknown";
+
             // Convertir Location de Maui a Android.Locations.Location
             AndroidLocation androidLocation = null;
             try
@@ -232,10 +297,51 @@ namespace DISMO_REPORTES.Services
                     Latitude = location.Latitude,
                     Longitude = location.Longitude
                 };
+
+                if (location.Accuracy.HasValue)
+                    androidLocation.Accuracy = (float)location.Accuracy.Value;
+
+                if (location.Altitude.HasValue)
+                    androidLocation.Altitude = location.Altitude.Value;
+
+                if (location.Speed.HasValue)
+                    androidLocation.Speed = (float)location.Speed.Value;
+
+                if (location.Course.HasValue)
+                    androidLocation.Bearing = (float)location.Course.Value;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Error al convertir ubicación: {ex.Message}");
+            }
+
+            // Si tenemos servicio de fusión disponible, obtenemos información de movimiento
+            if (_fusionService != null)
+            {
+                try
+                {
+                    // Intentar obtener información de movimiento del servicio de fusión
+                    var fusionResult = await _fusionService.GetFusedLocationAsync(location);
+                    if (fusionResult != null)
+                    {
+                        isMoving = fusionResult.IsMoving;
+                        movementContextName = fusionResult.MovementContextName;
+
+                        // Si hay detección de sospecha desde la fusión, incorporarla
+                        if (fusionResult.IsSuspicious)
+                        {
+                            isSuspicious = true;
+                            if (!string.IsNullOrEmpty(fusionResult.SuspiciousReason))
+                            {
+                                suspiciousReason += fusionResult.SuspiciousReason + "; ";
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Error al obtener información de movimiento: {ex.Message}");
+                }
             }
 
             // Verificar si la ubicación es sospechosa usando el nuevo método de seguridad
@@ -270,7 +376,10 @@ namespace DISMO_REPORTES.Services
             Console.WriteLine($"🕒 Timestamp: {timestamp}");
             Console.WriteLine($"🔍 Ruta actual: {idRuta}");
             Console.WriteLine($"🔍 Ubicación falsa: {isSuspicious}");
-            if (isSuspicious)   
+            Console.WriteLine($"🧠 Estado de movimiento: {(isMoving ? "En movimiento" : "Estacionario")}");
+            Console.WriteLine($"🧠 Contexto: {movementContextName}");
+
+            if (isSuspicious)
             {
                 Console.WriteLine($"⚠️ ALERTA: Ubicación sospechosa. Motivo: {suspiciousReason}");
             }
@@ -310,6 +419,8 @@ namespace DISMO_REPORTES.Services
                     suspiciousReason = suspiciousReason,
                     id_ruta = idRuta,
                     battery = Battery.Default.ChargeLevel * 100,
+                    isMoving = isMoving,
+                    movementContext = movementContextName,
                     reportData = reportData // Incluir los datos del reporte
                 };
                 Console.WriteLine("📊 Incluyendo datos de ventas en el envío");
@@ -324,7 +435,9 @@ namespace DISMO_REPORTES.Services
                     isSuspicious = isSuspicious,
                     suspiciousReason = suspiciousReason,
                     id_ruta = idRuta,
-                    battery = Battery.Default.ChargeLevel * 100
+                    battery = Battery.Default.ChargeLevel * 100,
+                    isMoving = isMoving,
+                    movementContext = movementContextName
                 };
 
                 Console.WriteLine("⚠️ No se incluyen datos de ventas porque no hay datos disponibles");
@@ -354,23 +467,23 @@ namespace DISMO_REPORTES.Services
                     {
                         Console.WriteLine($"⚠ Error al enviar. Status: {response.StatusCode}");
                         // Guardar la ubicación y los datos del reporte
-                        SaveLocationToDatabase(location, idRuta, isSuspicious, suspiciousReason, reportData);
+                        SaveLocationToDatabase(location, idRuta, isSuspicious, suspiciousReason, isMoving, movementContextName, reportData);
                     }
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"🌐 Error de red: {ex}");
                     // Guardar la ubicación y los datos del reporte
-                    SaveLocationToDatabase(location, idRuta, isSuspicious, suspiciousReason, reportData);
+                    SaveLocationToDatabase(location, idRuta, isSuspicious, suspiciousReason, isMoving, movementContextName, reportData);
                 }
             }
             else
             {
                 Console.WriteLine("🚫 Sin conexión al servidor. Guardando localmente.");
                 // Guardar la ubicación y los datos del reporte
-                SaveLocationToDatabase(location, idRuta, isSuspicious, suspiciousReason, reportData);
+                SaveLocationToDatabase(location, idRuta, isSuspicious, suspiciousReason, isMoving, movementContextName, reportData);
             }
-        }
+        }   
 
         // Método para obtener los datos del reporte
         private List<ReporteData> ObtenerDatosReporte()
@@ -442,7 +555,7 @@ namespace DISMO_REPORTES.Services
 
         private static readonly object _dbLock = new object();
 
-        private void SaveLocationToDatabase(Location location, string idRuta, bool isSuspicious, string suspiciousReason, List<ReporteData> reportData = null)
+        private void SaveLocationToDatabase(Location location, string idRuta, bool isSuspicious, string suspiciousReason, bool isMoving = false, string movementContext = "Unknown", List<ReporteData> reportData = null)
         {
             Task.Run(() =>
             {
@@ -474,12 +587,15 @@ namespace DISMO_REPORTES.Services
                             IdRuta = idRuta,
                             BatteryLevel = Battery.Default.ChargeLevel * 100,
                             ReportDataJson = reportDataJson,
-                            SuspiciousReason = suspiciousReason
+                            SuspiciousReason = suspiciousReason,
+                            IsMoving = isMoving,
+                            MovementContext = movementContext
                         };
 
                         DatabaseService.Database.Insert(pendingLocation);
                         Console.WriteLine("✅ Ubicación guardada localmente con Timestamp, zona horaria" +
                             (isSuspicious ? $", motivo de sospecha: {suspiciousReason}" : "") +
+                            $", estado: {(isMoving ? "En movimiento" : "Estacionario")}, contexto: {movementContext}" +
                             (reportDataJson != null ? " y datos del reporte" : ""));
                     }
                     catch (Exception ex)
@@ -519,6 +635,7 @@ namespace DISMO_REPORTES.Services
                             try
                             {
                                 var reportData = JsonConvert.DeserializeObject<List<ReporteData>>(location.ReportDataJson);
+                                // En la parte donde creas el objeto locationData en SendPendingLocations
                                 locationData = new
                                 {
                                     latitude = location.Latitude,
@@ -528,7 +645,9 @@ namespace DISMO_REPORTES.Services
                                     suspiciousReason = location.SuspiciousReason ?? "",
                                     id_ruta = idRuta,
                                     battery = location.BatteryLevel,
-                                    reportData = reportData
+                                    isMoving = location.IsMoving,
+                                    movementContext = location.MovementContext,
+                                    reportData = reportData // Si existen datos del reporte
                                 };
                                 Console.WriteLine($"📊 Enviando ubicación pendiente con datos de reporte");
                             }
@@ -559,7 +678,9 @@ namespace DISMO_REPORTES.Services
                                 isSuspicious = location.IsSuspicious,
                                 suspiciousReason = location.SuspiciousReason ?? "",
                                 id_ruta = idRuta,
-                                battery = location.BatteryLevel
+                                battery = location.BatteryLevel,
+                                isMoving = location.IsMoving,
+                                movementContext = location.MovementContext,
                             };
                         }
 
@@ -612,59 +733,125 @@ namespace DISMO_REPORTES.Services
                     return new LocationResult { Location = null, IsSuspicious = false, SuspiciousReason = "" };
 
                 var request = new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(10));
-                var location = await Geolocation.Default.GetLocationAsync(request);
+                var rawLocation = await Geolocation.Default.GetLocationAsync(request);
 
-                // Verificar si hay VPN activo u otras condiciones sospechosas
-                bool isSuspicious = false;
-                string suspiciousReason = "";
-
-                if (_securityService != null && location != null)
+                if (rawLocation == null)
                 {
-                    try
-                    {
-                        // Convertir la ubicación de Maui a Android para las verificaciones
-                        var androidLocation = _securityService.ConvertMauiLocationToAndroid(location);
-
-                        // Verificar si la ubicación está siendo simulada
-                        bool isMocked = _securityService.IsLocationMocked(androidLocation);
-
-                        // Verificar VPN activo
-                        bool isVpnActive = _securityService.IsVpnActive();
-
-                        // Verificar aplicaciones de GPS falso instaladas
-                        bool hasMockApps = _securityService.IsFakeGpsActive();
-
-                        // Combinar todas las verificaciones
-                        isSuspicious = isMocked || isVpnActive || hasMockApps;
-
-                        if (isMocked) suspiciousReason += "Ubicación simulada detectada; ";
-                        if (isVpnActive) suspiciousReason += "VPN activo; ";
-                        if (hasMockApps) suspiciousReason += "Apps de GPS falso instaladas; ";
-
-                        if (isSuspicious)
-                        {
-                            Console.WriteLine($"⚠️ ALERTA: {suspiciousReason}");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"❌ Error en la verificación de seguridad: {ex.Message}");
-                        // No marcar como sospechoso en caso de error en la verificación
-                    }
+                    Console.WriteLine("⚠️ No se pudo obtener ubicación del GPS");
+                    return new LocationResult { Location = null, IsSuspicious = false, SuspiciousReason = "" };
                 }
 
-                return new LocationResult
+                // Si hay servicio de fusión disponible, usarlo para mejorar la ubicación
+                LocationResult result;
+                if (_fusionService != null)
                 {
-                    Location = location,
-                    IsSuspicious = isSuspicious,
-                    SuspiciousReason = suspiciousReason
-                };
+                    Console.WriteLine("🔄 Aplicando fusión de datos GPS para mejorar precisión...");
+                    result = await _fusionService.GetFusedLocationAsync(rawLocation);
+
+                    // Combinar resultados de fusión con verificaciones de seguridad
+                    if (_securityService != null)
+                    {
+                        try
+                        {
+                            // Convertir la ubicación de Maui a Android para las verificaciones
+                            var androidLocation = _securityService.ConvertMauiLocationToAndroid(result.Location);
+
+                            // Verificar si la ubicación está siendo simulada
+                            bool isMocked = _securityService.IsLocationMocked(androidLocation);
+
+                            // Verificar VPN activo
+                            bool isVpnActive = _securityService.IsVpnActive();
+
+                            // Verificar aplicaciones de GPS falso instaladas
+                            bool hasMockApps = _securityService.IsFakeGpsActive();
+
+                            // Combinar todas las verificaciones
+                            bool isSuspicious = isMocked || isVpnActive || hasMockApps || result.IsSuspicious;
+                            string suspiciousReason = result.SuspiciousReason ?? "";
+
+                            if (isMocked) suspiciousReason += "Ubicación simulada detectada; ";
+                            if (isVpnActive) suspiciousReason += "VPN activo; ";
+                            if (hasMockApps) suspiciousReason += "Apps de GPS falso instaladas; ";
+
+                            if (isSuspicious)
+                            {
+                                Console.WriteLine($"⚠️ ALERTA: {suspiciousReason}");
+                            }
+
+                            // Actualizar el resultado con la información combinada
+                            result.IsSuspicious = isSuspicious;
+                            result.SuspiciousReason = suspiciousReason;
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"❌ Error en la verificación de seguridad: {ex.Message}");
+                        }
+                    }
+
+                    Console.WriteLine($"📍 Ubicación fusionada: Lat={result.Location.Latitude}, Lng={result.Location.Longitude}, " +
+                                     $"Precisión={result.Location.Accuracy}m");
+                    return result;
+                }
+                else
+                {
+                    // Si no hay servicio de fusión, usar solo las verificaciones de seguridad (código original)
+                    bool isSuspicious = false;
+                    string suspiciousReason = "";
+
+                    if (_securityService != null)
+                    {
+                        try
+                        {
+                            // Convertir la ubicación de Maui a Android para las verificaciones
+                            var androidLocation = _securityService.ConvertMauiLocationToAndroid(rawLocation);
+
+                            // Verificar si la ubicación está siendo simulada
+                            bool isMocked = _securityService.IsLocationMocked(androidLocation);
+
+                            // Verificar VPN activo
+                            bool isVpnActive = _securityService.IsVpnActive();
+
+                            // Verificar aplicaciones de GPS falso instaladas
+                            bool hasMockApps = _securityService.IsFakeGpsActive();
+
+                            // Combinar todas las verificaciones
+                            isSuspicious = isMocked || isVpnActive || hasMockApps;
+
+                            if (isMocked) suspiciousReason += "Ubicación simulada detectada; ";
+                            if (isVpnActive) suspiciousReason += "VPN activo; ";
+                            if (hasMockApps) suspiciousReason += "Apps de GPS falso instaladas; ";
+
+                            if (isSuspicious)
+                            {
+                                Console.WriteLine($"⚠️ ALERTA: {suspiciousReason}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"❌ Error en la verificación de seguridad: {ex.Message}");
+                        }
+                    }
+
+                    return new LocationResult
+                    {
+                        Location = rawLocation,
+                        IsSuspicious = isSuspicious,
+                        SuspiciousReason = suspiciousReason
+                    };
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Error obteniendo ubicación: {ex.Message}");
                 return new LocationResult { Location = null, IsSuspicious = false, SuspiciousReason = "" };
             }
+        }
+
+        // Asegúrate de liberar los recursos en el Dispose() si implementas IDisposable
+        public void Dispose()
+        {
+            _fusionService?.Dispose();
+            // Liberar otros recursos si es necesario
         }
 
         private async Task<bool> IsServerAvailable(string url)
