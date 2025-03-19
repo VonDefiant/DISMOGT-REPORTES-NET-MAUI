@@ -14,7 +14,7 @@ using DISMOGT_REPORTES.Services;
 using DISMOGT_REPORTES; // Para acceder a ResMxFamReport
 using System.IO; // Para manejo de archivos
 using SQLite; // Para conexión a SQLite
-using Location = Microsoft.Maui.Devices.Sensors.Location; // Usar un alias explícito
+using Location = Microsoft.Maui.Devices.Sensors.Location;
 using AndroidLocation = Android.Locations.Location;
 
 namespace DISMO_REPORTES.Services
@@ -49,7 +49,6 @@ namespace DISMO_REPORTES.Services
                 Console.WriteLine($"❌ Error al inicializar servicios: {ex.Message}");
             }
         }
-
         public async Task OnReading(GpsReading reading)
         {
             try
@@ -168,7 +167,6 @@ namespace DISMO_REPORTES.Services
                 Console.WriteLine($"❌ Error procesando la lectura de GPS: {ex}");
             }
         }
-
         public async Task SendTokenToServerAsync(string token, int maxRetries = 3)
         {
             if (string.IsNullOrEmpty(token))
@@ -243,7 +241,6 @@ namespace DISMO_REPORTES.Services
 
             Console.WriteLine($"❌ No se pudo enviar el token FCM después de {maxRetries} intentos.");
         }
-
         private async Task StoreTokenForLaterSending(string token, string deviceId)
         {
             try
@@ -258,7 +255,6 @@ namespace DISMO_REPORTES.Services
                 Console.WriteLine($"❌ Error guardando token: {ex.Message}");
             }
         }
-
         public async Task TrySendPendingTokenAsync()
         {
             try

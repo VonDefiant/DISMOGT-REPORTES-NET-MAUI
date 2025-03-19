@@ -1,54 +1,60 @@
 ﻿using Android.Content;
 using Android.Hardware;
 using Android.Locations;
-using Microsoft.Maui.Devices.Sensors;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
-using System.Threading;
 using System.Threading.Tasks;
 using DISMOGT_REPORTES.Models;
-using MauiLocation = Microsoft.Maui.Devices.Sensors.Location;
-using AndroidLocation = Android.Locations.Location;
 using DISMOGT_REPORTES.Services.LocationFusion;
+
+// Definir alias para evitar ambigüedad entre tipos Location
+using AndroidLocation = Android.Locations.Location;
+using MauiLocation = Microsoft.Maui.Devices.Sensors.Location;
 
 namespace DISMOGT_REPORTES.Services
 {
     /// <summary>
-    /// Servicio principal de fusión de datos de ubicación que coordina todos los componentes
+    /// Servicio mejorado para la fusión y filtrado de datos de ubicación
+    /// para seguir mejor los patrones naturales de movimiento y las redes de carreteras
     /// </summary>
     public class LocationFusionService : IDisposable
     {
         private readonly Context _context;
-        private readonly SensorManager _sensorManager;
-        private readonly Sensor _accelerometer;
-        private readonly Sensor _magnetometer;
-        private readonly Sensor _gyroscope;
         private readonly LocationManager _locationManager;
+        private readonly SensorManager _sensorManager;
+
+        // Escuchadores de sensores
+        private Sensor _accelerometer;
+        private Sensor _magnetometer;
+        private Sensor _gyroscope;
         private FusionAccelerometerListener _accelerometerListener;
         private FusionMagnetometerListener _magnetometerListener;
         private FusionGyroscopeListener _gyroscopeListener;
 
-        // Componentes modulares
+        // Almacenamiento de datos
+        private readonly List<Vector3> _accelerationReadings = new List<Vector3>();
+        private readonly List<Vector3> _rotationReadings = new List<Vector3>();
+        private readonly List<MauiLocation> _locationHistory = new List<MauiLocation>();
+        private bool _isMoving = false;
+
+        // Servicios componentes
         private readonly ContextDetector _contextDetector;
         private readonly LocationFilters _locationFilters;
         private readonly LocationPredictor _locationPredictor;
         private readonly TelemetryService _telemetryService;
 
-        // Datos de sensores y estado
-        private readonly List<MauiLocation> _locationHistory = new List<MauiLocation>();
-        private readonly List<Vector3> _accelerationReadings = new List<Vector3>();
-        private readonly List<Vector3> _magneticReadings = new List<Vector3>();
-        private readonly List<Vector3> _rotationReadings = new List<Vector3>();
-        private Vector3 _lastAcceleration;
-        private Vector3 _lastMagneticField;
-        private Vector3 _lastRotation;
-        private bool _isMoving = false;
+        // Configuración
+        private MovementContext _currentContext = MovementContext.Unknown;
         private bool _isInitialized = false;
-        private readonly int _historySize = 20;
+        private int _maxHistorySize = 15;
+        private bool _useKalmanFilter = true;
+        private bool _useContextCorrections = true;
+        private DateTime _lastLocationTime = DateTime.MinValue;
 
         /// <summary>
-        /// Constructor del servicio de fusión
+        /// Constructor para el servicio mejorado de fusión de ubicación
         /// </summary>
         public LocationFusionService(Context context)
         {
@@ -56,78 +62,107 @@ namespace DISMOGT_REPORTES.Services
 
             try
             {
-                // Inicializar sensores
-                _sensorManager = (SensorManager)_context.GetSystemService(Context.SensorService);
-                _accelerometer = _sensorManager?.GetDefaultSensor(SensorType.Accelerometer);
-                _magnetometer = _sensorManager?.GetDefaultSensor(SensorType.MagneticField);
-                _gyroscope = _sensorManager?.GetDefaultSensor(SensorType.Gyroscope);
+                // Inicializar servicios del sistema
                 _locationManager = (LocationManager)_context.GetSystemService(Context.LocationService);
+                _sensorManager = (SensorManager)_context.GetSystemService(Context.SensorService);
 
-                // Inicializar componentes
+                // Inicializar servicios componentes
                 _contextDetector = new ContextDetector(context);
                 _locationFilters = new LocationFilters();
                 _locationPredictor = new LocationPredictor();
-                _telemetryService = new TelemetryService(
-                    Android.OS.Environment.ExternalStorageDirectory.AbsolutePath + "/DISMOGTREPORTES");
+                _telemetryService = new TelemetryService(_context.CacheDir.AbsolutePath);
 
-                // Inicializar listeners de sensores
+                // Inicializar sensores
                 InitializeSensors();
 
                 _isInitialized = true;
-                Console.WriteLine("✅ Servicio avanzado de fusión de ubicación inicializado correctamente");
+                Console.WriteLine("✅ LocationFusionService inicializado correctamente");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Error al inicializar servicio de fusión: {ex.Message}");
+                Console.WriteLine($"❌ Error al inicializar LocationFusionService: {ex.Message}");
+                _isInitialized = false;
             }
         }
 
         /// <summary>
-        /// Inicializa los listeners de los sensores
+        /// Inicializar los sensores necesarios para la detección de movimiento
         /// </summary>
         private void InitializeSensors()
         {
             try
             {
+                // Inicializar acelerómetro
+                _accelerometer = _sensorManager.GetDefaultSensor(SensorType.Accelerometer);
                 if (_accelerometer != null)
                 {
                     _accelerometerListener = new FusionAccelerometerListener();
                     _accelerometerListener.SensorChanged += (values) =>
                     {
-                        _lastAcceleration = new Vector3(values[0], values[1], values[2]);
-                        _accelerationReadings.Add(_lastAcceleration);
-                        if (_accelerationReadings.Count > _historySize)
+                        var vector = new Vector3(values[0], values[1], values[2]);
+                        _accelerationReadings.Add(vector);
+
+                        // Limitar el tamaño del historial
+                        if (_accelerationReadings.Count > 20)
                             _accelerationReadings.RemoveAt(0);
 
-                        UpdateMotionState();
+                        // Detección básica de movimiento
+                        Vector3 gravity = new Vector3(0, 0, 9.8f);
+                        float magnitude = (vector - gravity).Length();
+                        _isMoving = magnitude > 1.2f;
                     };
+
+                    _sensorManager.RegisterListener(
+                        _accelerometerListener,
+                        _accelerometer,
+                        SensorDelay.Normal
+                    );
+
+                    Console.WriteLine("✅ Acelerómetro inicializado");
                 }
 
+                // Inicializar magnetómetro
+                _magnetometer = _sensorManager.GetDefaultSensor(SensorType.MagneticField);
                 if (_magnetometer != null)
                 {
                     _magnetometerListener = new FusionMagnetometerListener();
                     _magnetometerListener.SensorChanged += (values) =>
                     {
-                        _lastMagneticField = new Vector3(values[0], values[1], values[2]);
-                        _magneticReadings.Add(_lastMagneticField);
-                        if (_magneticReadings.Count > _historySize)
-                            _magneticReadings.RemoveAt(0);
+                        // Procesar datos del magnetómetro si es necesario
                     };
+
+                    _sensorManager.RegisterListener(
+                        _magnetometerListener,
+                        _magnetometer,
+                        SensorDelay.Normal
+                    );
+
+                    Console.WriteLine("✅ Magnetómetro inicializado");
                 }
 
+                // Inicializar giroscopio
+                _gyroscope = _sensorManager.GetDefaultSensor(SensorType.Gyroscope);
                 if (_gyroscope != null)
                 {
                     _gyroscopeListener = new FusionGyroscopeListener();
                     _gyroscopeListener.SensorChanged += (values) =>
                     {
-                        _lastRotation = new Vector3(values[0], values[1], values[2]);
-                        _rotationReadings.Add(_lastRotation);
-                        if (_rotationReadings.Count > _historySize)
+                        var vector = new Vector3(values[0], values[1], values[2]);
+                        _rotationReadings.Add(vector);
+
+                        // Limitar el tamaño del historial
+                        if (_rotationReadings.Count > 20)
                             _rotationReadings.RemoveAt(0);
                     };
-                }
 
-                RegisterSensors();
+                    _sensorManager.RegisterListener(
+                        _gyroscopeListener,
+                        _gyroscope,
+                        SensorDelay.Normal
+                    );
+
+                    Console.WriteLine("✅ Giroscopio inicializado");
+                }
             }
             catch (Exception ex)
             {
@@ -136,249 +171,289 @@ namespace DISMOGT_REPORTES.Services
         }
 
         /// <summary>
-        /// Registra los sensores con las tasas de muestreo adecuadas
+        /// Método principal para obtener una ubicación fusionada basada en datos GPS sin procesar
         /// </summary>
-        private void RegisterSensors()
+        public async Task<LocationResult> GetFusedLocationAsync(MauiLocation rawLocation)
         {
-            try
+            if (!_isInitialized || rawLocation == null)
             {
-                if (_accelerometer != null)
+                // Si no está inicializado, devolver la ubicación sin procesar
+                return new LocationResult
                 {
-                    _sensorManager.RegisterListener(
-                        _accelerometerListener,
-                        _accelerometer,
-                        SensorDelay.Normal
-                    );
-                    Console.WriteLine("🔄 Acelerómetro registrado");
-                }
-
-                if (_magnetometer != null)
-                {
-                    _sensorManager.RegisterListener(
-                        _magnetometerListener,
-                        _magnetometer,
-                        SensorDelay.Normal
-                    );
-                    Console.WriteLine("🧲 Magnetómetro registrado");
-                }
-
-                if (_gyroscope != null)
-                {
-                    _sensorManager.RegisterListener(
-                        _gyroscopeListener,
-                        _gyroscope,
-                        SensorDelay.Normal
-                    );
-                    Console.WriteLine("🔄 Giroscopio registrado");
-                }
+                    Location = rawLocation,
+                    IsSuspicious = false,
+                    SuspiciousReason = ""
+                };
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ Error al registrar sensores: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Actualiza el estado de movimiento basado en lecturas del acelerómetro
-        /// </summary>
-        private void UpdateMotionState()
-        {
-            if (_accelerationReadings.Count < 3)
-                return;
 
             try
             {
-                // Calcular la magnitud de la aceleración actual sin gravedad
-                Vector3 gravity = new Vector3(0, 0, 9.8f); // Aproximación simple de la gravedad
-                Vector3 linearAcceleration = _lastAcceleration - gravity;
-                float magnitude = linearAcceleration.Length();
+                var startTime = DateTime.Now;
+                double originalAccuracy = rawLocation.Accuracy ?? 25.0;
+                bool isSuspicious = false;
+                string suspiciousReason = "";
 
-                // Usar un promedio móvil para reducir ruido
-                float avgMagnitude = 0;
-                int count = 0;
-                foreach (var accel in _accelerationReadings.TakeLast(3))
-                {
-                    avgMagnitude += (accel - gravity).Length();
-                    count++;
-                }
-                avgMagnitude /= count;
-
-                // Actualizar estado de movimiento
-                bool previousState = _isMoving;
-                _isMoving = avgMagnitude > 0.8; // Umbral de movimiento: 0.8 m/s²
-
-                // Si el estado cambió, registrarlo
-                if (previousState != _isMoving)
-                {
-                    Console.WriteLine($"🧠 Estado de movimiento: {(_isMoving ? "En movimiento" : "Estacionario")}");
-                }
+                // Almacenar ubicación sin procesar en el historial
+                _locationHistory.Add(rawLocation);
+                if (_locationHistory.Count > _maxHistorySize)
+                    _locationHistory.RemoveAt(0);
 
                 // Actualizar contexto de movimiento
-                _contextDetector.UpdateMovementContext(
+                _currentContext = _contextDetector.UpdateMovementContext(
                     _accelerationReadings,
                     _rotationReadings,
                     _locationHistory,
-                    _isMoving);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ Error al actualizar estado de movimiento: {ex.Message}");
-            }
-        }
+                    _isMoving
+                );
 
-        /// <summary>
-        /// Método principal para obtener una ubicación mejorada con fusión de datos
-        /// </summary>
-        public async Task<LocationResult> GetFusedLocationAsync(MauiLocation rawLocation, CancellationToken cancellationToken = default)
-        {
-            if (!_isInitialized || rawLocation == null)
-                return new LocationResult { Location = rawLocation, IsSuspicious = false };
-
-            var startTime = DateTime.Now;
-            double originalAccuracy = rawLocation.Accuracy ?? 100.0;
-
-            try
-            {
-                Console.WriteLine($"🧩 Comenzando fusión de ubicación, precisión original: {originalAccuracy}m");
-
-                // 1. Obtenemos ubicaciones de diferentes proveedores (GPS, Red, Pasivos)
-                List<MauiLocation> candidateLocations = new List<MauiLocation>();
-
-                // Añadir la ubicación cruda recibida
-                candidateLocations.Add(rawLocation);
-
-                // Comprobar si podemos obtener ubicaciones adicionales de Android
-                if (_locationManager != null)
+                // CAMBIO CLAVE: Evitar la fusión si la precisión ya es buena (< 10m) y estamos en un vehículo
+                // Esto ayuda a evitar el "enderezamiento" del movimiento a lo largo de las carreteras
+                if (rawLocation.Accuracy.HasValue &&
+                    rawLocation.Accuracy.Value < 10.0 &&
+                    _currentContext == MovementContext.Vehicle)
                 {
-                    try
+                    Console.WriteLine("✅ Ubicación precisa en vehículo, omitiendo fusión para preservar patrón natural");
+
+                    var processingTime = (DateTime.Now - startTime).TotalMilliseconds;
+                    _telemetryService.RecordPerformanceMetric(
+                        originalAccuracy,
+                        rawLocation.Accuracy.Value,
+                        processingTime,
+                        false,
+                        "",
+                        _currentContext
+                    );
+
+                    return new LocationResult
                     {
-                        // Intentar obtener la última ubicación conocida del proveedor de red
-                        AndroidLocation networkLocation = _locationManager.GetLastKnownLocation(LocationManager.NetworkProvider);
-                        if (networkLocation != null)
-                        {
-                            candidateLocations.Add(new MauiLocation
-                            {
-                                Latitude = networkLocation.Latitude,
-                                Longitude = networkLocation.Longitude,
-                                Accuracy = networkLocation.HasAccuracy ? networkLocation.Accuracy : 100,
-                                Altitude = networkLocation.HasAltitude ? networkLocation.Altitude : null,
-                                Course = networkLocation.HasBearing ? networkLocation.Bearing : null,
-                                Speed = networkLocation.HasSpeed ? networkLocation.Speed : null,
-                                Timestamp = DateTimeOffset.FromUnixTimeMilliseconds(networkLocation.Time).DateTime
-                            });
-                        }
-                    }
-                    catch (Exception ex)
+                        Location = rawLocation,
+                        IsSuspicious = false,
+                        SuspiciousReason = ""
+                    };
+                }
+
+                // Comprobar comportamiento sospechoso que indique ubicación falsa
+                if (_locationHistory.Count >= 2)
+                {
+                    bool isConsistent = _locationPredictor.IsConsistentWithMotion(
+                        rawLocation,
+                        _locationHistory[_locationHistory.Count - 2],
+                        _isMoving,
+                        _currentContext
+                    );
+
+                    if (!isConsistent)
                     {
-                        Console.WriteLine($"⚠️ Error al obtener ubicación de red: {ex.Message}");
+                        Console.WriteLine("⚠️ Posible ubicación simulada: inconsistencia de movimiento");
+                        isSuspicious = true;
+                        suspiciousReason = "Inconsistencia entre movimiento físico y GPS";
                     }
                 }
 
-                // 2. Validar y filtrar ubicaciones basadas en criterios de calidad
-                var validLocations = candidateLocations
-                    .Where(loc => loc != null && loc.Accuracy.HasValue && loc.Accuracy.Value < 100)
-                    .ToList();
-
-                if (validLocations.Count == 0)
-                {
-                    Console.WriteLine("⚠️ No hay ubicaciones válidas disponibles");
-                    return new LocationResult { Location = rawLocation, IsSuspicious = false };
-                }
-
-                // 3. Verificar si la ubicación es consistente con el estado de movimiento
-                MauiLocation lastLocation = _locationHistory.Count > 0 ? _locationHistory.Last() : null;
-                MovementContext currentContext = _contextDetector.CurrentContext;
-
-                bool isConsistentWithMotion = lastLocation == null ||
-                    _locationPredictor.IsConsistentWithMotion(rawLocation, lastLocation, _isMoving, currentContext);
-
-                bool isSuspicious = !isConsistentWithMotion;
-                string suspiciousReason = isSuspicious ? "Inconsistencia entre movimiento y ubicación; " : "";
-
-                // 4. Aplicar predicción de movimiento si estamos en vehículo o caminando
-                if (currentContext == MovementContext.Vehicle || currentContext == MovementContext.Walking)
-                {
-                    var predictedLocation = _locationPredictor.PredictLocationFromMovement(rawLocation, currentContext);
-                    if (predictedLocation != null)
-                    {
-                        candidateLocations.Add(predictedLocation);
-                        Console.WriteLine("🔮 Añadida ubicación predicha basada en movimiento");
-                    }
-                }
-
-                // 5. Aplicar filtros para mejorar la precisión
-                MauiLocation fusedLocation = _locationFilters.ApplyFilters(validLocations, currentContext);
-
-                // 6. Aplicar correcciones específicas para el contexto
-                List<MauiLocation> historyList = _locationHistory.Count > 0 ? _locationHistory : null;
-                if (historyList != null)
-                {
-                    fusedLocation = _locationFilters.ApplyContextSpecificCorrections(fusedLocation, historyList, currentContext);
-                }
-
-                // 7. Actualizar el historial de ubicaciones
-                UpdateLocationHistory(fusedLocation);
-
-                // 8. Actualizar los parámetros de Kalman basados en el rendimiento reciente
+                // Obtener contadores de telemetría para ajustar parámetros de filtrado
                 var (improvements, worsenings) = _telemetryService.GetConsecutiveCounters();
-                _locationFilters.UpdateKalmanParameters(currentContext, improvements, worsenings);
 
-                // 9. Registrar métricas de rendimiento
-                double finalAccuracy = fusedLocation.Accuracy ?? originalAccuracy;
-                double processingTime = (DateTime.Now - startTime).TotalMilliseconds;
-                _telemetryService.RecordPerformanceMetric(originalAccuracy, finalAccuracy, processingTime,
-                    isSuspicious, suspiciousReason, currentContext);
+                // Preparar ubicación filtrada
+                MauiLocation filteredLocation = rawLocation;
 
-                Console.WriteLine($"✅ Fusión completada en {processingTime:F1}ms. " +
-                    $"Precisión: {originalAccuracy:F1}m → {finalAccuracy:F1}m " +
-                    $"(Mejora: {originalAccuracy - finalAccuracy:F1}m)");
+                // Ajustar parámetros de filtro basado en contexto y rendimiento pasado
+                if (_useKalmanFilter)
+                {
+                    _locationFilters.UpdateKalmanParameters(_currentContext, improvements, worsenings);
+                }
 
-                // 10. Devolver el resultado
+                // CAMBIO CLAVE: Solo aplicar filtros si se cumplen ciertas condiciones
+                bool shouldApplyFilters = true;
+
+                // Evitar filtrado cuando las ubicaciones sucesivas están muy separadas en el tiempo (probablemente el dispositivo estaba en reposo)
+                if (_lastLocationTime != DateTime.MinValue)
+                {
+                    TimeSpan timeSinceLastLocation = rawLocation.Timestamp - _lastLocationTime;
+                    if (timeSinceLastLocation.TotalMinutes > 5)
+                    {
+                        shouldApplyFilters = false;
+                        Console.WriteLine("ℹ️ Brecha temporal larga, omitiendo filtrado");
+                    }
+                }
+
+                // Evitar filtrar patrones de movimiento en línea recta que pueden ser legítimos
+                if (_locationHistory.Count >= 3 && _currentContext == MovementContext.Vehicle)
+                {
+                    bool isNaturalStraightPath = IsNaturalStraightMovement();
+                    if (isNaturalStraightPath)
+                    {
+                        shouldApplyFilters = false;
+                        Console.WriteLine("ℹ️ Movimiento recto natural detectado, reduciendo filtrado");
+                    }
+                }
+
+                // Aplicar filtros si es apropiado
+                if (shouldApplyFilters)
+                {
+                    // Si tenemos múltiples ubicaciones, aplicar filtros
+                    List<MauiLocation> locationsToFilter = new List<MauiLocation>();
+                    if (_locationHistory.Count > 1)
+                    {
+                        // Usar las últimas ubicaciones para filtrado
+                        int samplesToUse = Math.Min(3, _locationHistory.Count);
+                        locationsToFilter = _locationHistory.Skip(_locationHistory.Count - samplesToUse).ToList();
+                    }
+                    else
+                    {
+                        locationsToFilter.Add(rawLocation);
+                    }
+
+                    // Aplicar filtro Kalman y fusión ponderada
+                    filteredLocation = _locationFilters.ApplyFilters(locationsToFilter, _currentContext);
+
+                    // Aplicar correcciones específicas de contexto si están habilitadas
+                    if (_useContextCorrections && _locationHistory.Count >= 3)
+                    {
+                        filteredLocation = _locationFilters.ApplyContextSpecificCorrections(
+                            filteredLocation,
+                            _locationHistory,
+                            _currentContext
+                        );
+                    }
+                }
+
+                // Registrar tiempo de procesamiento y métricas de rendimiento
+                var endTime = DateTime.Now;
+                double processingTimeMs = (endTime - startTime).TotalMilliseconds;
+
+                // Calcular precisión final (puede ser estimada después del filtrado)
+                double finalAccuracy = filteredLocation.Accuracy ?? originalAccuracy;
+
+                // Registrar métricas si la información de precisión está disponible
+                if (rawLocation.Accuracy.HasValue)
+                {
+                    _telemetryService.RecordPerformanceMetric(
+                        originalAccuracy,
+                        finalAccuracy,
+                        processingTimeMs,
+                        isSuspicious,
+                        suspiciousReason,
+                        _currentContext
+                    );
+                }
+
+                // Actualizar tiempo de última ubicación
+                _lastLocationTime = rawLocation.Timestamp.DateTime;
+
                 return new LocationResult
                 {
-                    Location = fusedLocation,
+                    Location = filteredLocation,
                     IsSuspicious = isSuspicious,
-                    SuspiciousReason = suspiciousReason,
-                    IsMoving = _isMoving,
-                    MovementContext = currentContext,
-                    MovementContextName = currentContext.ToString()
+                    SuspiciousReason = suspiciousReason
                 };
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Error en fusión de ubicación: {ex.Message}");
 
-                // Registrar error en métricas
-                _telemetryService.RecordPerformanceMetric(originalAccuracy, originalAccuracy,
-                    (DateTime.Now - startTime).TotalMilliseconds, false,
-                    $"Error: {ex.Message}", MovementContext.Unknown);
-
-                return new LocationResult { Location = rawLocation, IsSuspicious = false };
+                // En caso de error, devolver la ubicación original sin modificar
+                return new LocationResult
+                {
+                    Location = rawLocation,
+                    IsSuspicious = false,
+                    SuspiciousReason = ""
+                };
             }
         }
 
         /// <summary>
-        /// Actualiza el historial de ubicaciones
+        /// Determinar si el movimiento actual parece seguir una trayectoria recta natural
+        /// como una autopista o carretera recta, para evitar el filtrado excesivo
         /// </summary>
-        private void UpdateLocationHistory(MauiLocation location)
+        private bool IsNaturalStraightMovement()
         {
-            _locationHistory.Add(location);
-            if (_locationHistory.Count > _historySize)
+            try
             {
-                _locationHistory.RemoveAt(0);
+                if (_locationHistory.Count < 3)
+                    return false;
+
+                // Obtener las últimas 3 ubicaciones
+                var last3 = _locationHistory.Skip(_locationHistory.Count - 3).ToList();
+
+                // Comprobar si están en una línea relativamente recta (patrón natural de carretera)
+                bool isLinear = ArePointsLinear(last3);
+
+                // También comprobar si tenemos velocidad constante (movimiento natural de vehículo)
+                bool hasConsistentSpeed = HasConsistentSpeed(last3);
+
+                // Devolver true si se cumplen ambas condiciones
+                return isLinear && hasConsistentSpeed;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error al analizar movimiento recto: {ex.Message}");
+                return false;
             }
         }
 
         /// <summary>
-        /// Obtiene estadísticas de rendimiento del sistema de fusión
+        /// Comprobar si los puntos parecen ser aproximadamente lineales, lo que podría indicar una carretera
+        /// </summary>
+        private bool ArePointsLinear(List<MauiLocation> points)
+        {
+            if (points.Count < 3)
+                return false;
+
+            // Calcular los rumbos entre puntos consecutivos
+            double bearing1 = LocationUtils.CalculateBearing(
+                points[0].Latitude, points[0].Longitude,
+                points[1].Latitude, points[1].Longitude
+            );
+
+            double bearing2 = LocationUtils.CalculateBearing(
+                points[1].Latitude, points[1].Longitude,
+                points[2].Latitude, points[2].Longitude
+            );
+
+            // Calcular diferencia en rumbos (normalizado a 0-180 grados)
+            double bearingDiff = Math.Abs(bearing1 - bearing2);
+            if (bearingDiff > 180)
+                bearingDiff = 360 - bearingDiff;
+
+            // Si la diferencia de rumbo es pequeña, los puntos son aproximadamente lineales
+            // Permitir hasta 30 grados para curvas naturales de carreteras
+            return bearingDiff < 30;
+        }
+
+        /// <summary>
+        /// Comprobar si la velocidad es consistente entre puntos, indicando movimiento natural
+        /// </summary>
+        private bool HasConsistentSpeed(List<MauiLocation> points)
+        {
+            if (points.Count < 3)
+                return false;
+
+            // Calcular velocidades entre puntos consecutivos
+            double speed1 = LocationUtils.CalculateSpeed(points[0], points[1]);
+            double speed2 = LocationUtils.CalculateSpeed(points[1], points[2]);
+
+            // Comprobar cambios grandes de velocidad, que podrían ser sospechosos
+            if (speed1 > 0 && speed2 > 0)
+            {
+                double speedRatio = Math.Max(speed1, speed2) / Math.Min(speed1, speed2);
+
+                // Menos del 50% de cambio en velocidad se considera consistente
+                return speedRatio < 1.5;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Obtiene estadísticas de rendimiento del servicio de fusión de ubicación
         /// </summary>
         public Dictionary<string, double> GetPerformanceStats()
         {
-            return _telemetryService.GetPerformanceStats();
+            return _telemetryService?.GetPerformanceStats() ?? new Dictionary<string, double>();
         }
 
         /// <summary>
-        /// Libera los recursos y cancela las suscripciones a sensores
+        /// Liberar recursos cuando se desecha el servicio
         /// </summary>
         public void Dispose()
         {
@@ -396,7 +471,7 @@ namespace DISMOGT_REPORTES.Services
                         _sensorManager.UnregisterListener(_gyroscopeListener);
                 }
 
-                Console.WriteLine("🧹 Recursos del servicio de fusión liberados");
+                Console.WriteLine("♻️ LocationFusionService recursos liberados");
             }
             catch (Exception ex)
             {
