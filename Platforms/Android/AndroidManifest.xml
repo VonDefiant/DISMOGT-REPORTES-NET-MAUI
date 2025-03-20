@@ -20,10 +20,18 @@
 		</receiver>
 		<!-- Y asegúrate de que esté declarado el servicio: -->
 		<service android:name=".Platforms.Android.LocationForegroundService" android:enabled="true" android:exported="false" android:foregroundServiceType="location" />
+
+		<service
+		android:name=".Services.UpdateDownloadService"
+		android:enabled="true"
+		android:exported="false"
+		android:foregroundServiceType="dataSync" />
+
 		<!-- Configuración del FileProvider -->
 		<provider android:name="androidx.core.content.FileProvider" android:authorities="com.dismogt.app.fileprovider" android:grantUriPermissions="true" android:exported="false">
 			<meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
 		</provider>
+
 	</application>
 	<!-- Permisos de red -->
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -54,6 +62,7 @@
 	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 	<uses-permission android:name="android.permission.INSTANT_APP_FOREGROUND_SERVICE" />
 	<uses-permission android:name="android.permission.LOCATION_HARDWARE" />
 	<uses-permission android:name="android.permission.MANAGE_DEVICE_POLICY_LOCATION" />

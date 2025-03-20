@@ -10,6 +10,8 @@ using Microsoft.Maui.Networking;
 using Android.OS;
 using Android.Widget;
 using AndroidX.Core.Content;
+using Android.Content.PM;
+using Android.Provider;
 
 namespace DISMOGT_REPORTES.Services
 {
@@ -17,6 +19,7 @@ namespace DISMOGT_REPORTES.Services
     {
         public bool HasUpdate { get; set; }
         public string ApkUrl { get; set; }
+        public string Version { get; set; }
     }
 
     public class UpdateService
@@ -25,6 +28,7 @@ namespace DISMOGT_REPORTES.Services
         private static readonly string repoName = "DISMOGT-REPORTES-NET-MAUI";
         private static readonly string apiUrl = $"https://api.github.com/repos/{repoOwner}/{repoName}/releases/latest";
         private static readonly HttpClient httpClient = new HttpClient();
+        private PowerManager.WakeLock _wakeLock;
 
         public async Task<UpdateInfo> CheckForUpdate()
         {
@@ -92,7 +96,7 @@ namespace DISMOGT_REPORTES.Services
                 }
 
                 Console.WriteLine($"🚀 Nueva versión disponible: {latestVersion}");
-                return new UpdateInfo { HasUpdate = true, ApkUrl = apkUrl };
+                return new UpdateInfo { HasUpdate = true, ApkUrl = apkUrl, Version = latestVersion };
             }
             catch (Exception ex)
             {
@@ -105,62 +109,207 @@ namespace DISMOGT_REPORTES.Services
         {
             try
             {
-                string downloadPath = Path.Combine(FileSystem.CacheDirectory, "update.apk");
-                ProgressDialog progressDialog = new ProgressDialog(activity);
-                progressDialog.SetTitle("Descargando actualización");
-                progressDialog.SetMessage("Espere mientras se descarga la nueva versión...");
-                progressDialog.SetProgressStyle(ProgressDialogStyle.Horizontal);
-                progressDialog.SetCancelable(false);
-                progressDialog.Show();
-
-                Console.WriteLine($"📥 Descargando APK desde: {apkUrl}");
-
-                using var response = await httpClient.GetAsync(apkUrl, HttpCompletionOption.ResponseHeadersRead);
-
-                if (!response.IsSuccessStatusCode)
+                // Asegurarse de tener permisos para instalar paquetes en Android 8+
+                if (Build.VERSION.SdkInt >= BuildVersionCodes.O)
                 {
-                    Console.WriteLine($"❌ Error al descargar el APK: {response.StatusCode} - {response.ReasonPhrase}");
-                    progressDialog.Dismiss();
-                    return;
-                }
-
-                using var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None);
-                var totalBytes = response.Content.Headers.ContentLength ?? -1L;
-                var buffer = new byte[8192];
-                int bytesRead;
-                long totalRead = 0;
-
-                using var responseStream = await response.Content.ReadAsStreamAsync();
-                while ((bytesRead = await responseStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
-                {
-                    await fileStream.WriteAsync(buffer, 0, bytesRead);
-                    totalRead += bytesRead;
-
-                    if (totalBytes > 0)
+                    if (!activity.PackageManager.CanRequestPackageInstalls())
                     {
-                        int progress = (int)((totalRead * 100) / totalBytes);
-                        progressDialog.Progress = progress;
+                        // Solicitar permiso para instalar
+                        var intent = new Intent(Settings.ActionManageUnknownAppSources);
+                        intent.SetData(Android.Net.Uri.Parse("package:" + activity.PackageName));
+                        activity.StartActivityForResult(intent, 1004);
+
+                        Toast.MakeText(
+                            activity,
+                            "Por favor, permita la instalación de aplicaciones desde esta fuente",
+                            ToastLength.Long
+                        ).Show();
+
+                        // Esperar un momento para que el usuario conceda el permiso
+                        await Task.Delay(5000);
                     }
                 }
 
-                fileStream.Close();
-                progressDialog.Dismiss();
+                // Adquirir WakeLock para mantener la CPU activa durante la descarga
+                AcquireWakeLock(activity);
 
-                Console.WriteLine($"✅ APK descargado correctamente en: {downloadPath}");
+                // Descargar directamente en la actividad para mayor control
+                string downloadPath = await DownloadApkDirectly(apkUrl, activity);
 
-                InstallApk(downloadPath, activity);
+                if (string.IsNullOrEmpty(downloadPath))
+                {
+                    Console.WriteLine("❌ No se pudo descargar el APK");
+                    return;
+                }
+
+                // Mostrar diálogo de instalación obligatoria
+                ShowForceUpdateDialog(downloadPath, activity);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Error al descargar e instalar la actualización: {ex.Message}");
+                Console.WriteLine($"❌ Error al iniciar descarga: {ex.Message}");
+                ReleaseWakeLock();
             }
         }
 
-        private void InstallApk(string apkPath, Activity activity)
+        private async Task<string> DownloadApkDirectly(string apkUrl, Activity activity)
         {
             try
             {
-                var context = activity.ApplicationContext;
+                // Mostrar diálogo de progreso
+                var progressDialog = new ProgressDialog(activity);
+                progressDialog.SetTitle("Descargando actualización");
+                progressDialog.SetMessage("Por favor, espere mientras se descarga la actualización. No cierre la aplicación.");
+                progressDialog.SetProgressStyle(ProgressDialogStyle.Horizontal);
+                progressDialog.SetCancelable(false);
+                progressDialog.Progress = 0;
+                progressDialog.Max = 100;
+                progressDialog.Show();
+
+                string downloadPath = Path.Combine(FileSystem.CacheDirectory, "update.apk");
+
+                Console.WriteLine($"📥 Descargando APK desde: {apkUrl}");
+
+                using (var response = await httpClient.GetAsync(apkUrl, HttpCompletionOption.ResponseHeadersRead))
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Console.WriteLine($"❌ Error al descargar el APK: {response.StatusCode}");
+                        progressDialog.Dismiss();
+                        return null;
+                    }
+
+                    using (var fileStream = new FileStream(downloadPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    {
+                        var totalBytes = response.Content.Headers.ContentLength ?? -1L;
+                        var buffer = new byte[8192];
+                        int bytesRead;
+                        long totalRead = 0;
+
+                        using (var responseStream = await response.Content.ReadAsStreamAsync())
+                        {
+                            while ((bytesRead = await responseStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                            {
+                                await fileStream.WriteAsync(buffer, 0, bytesRead);
+                                totalRead += bytesRead;
+
+                                if (totalBytes > 0)
+                                {
+                                    activity.RunOnUiThread(() => {
+                                        int progress = (int)((totalRead * 100) / totalBytes);
+                                        progressDialog.Progress = progress;
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+
+                progressDialog.Dismiss();
+                Console.WriteLine($"✅ APK descargado correctamente en: {downloadPath}");
+                return downloadPath;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error al descargar APK: {ex.Message}");
+                return null;
+            }
+        }
+
+        private void ShowForceUpdateDialog(string apkPath, Activity activity)
+        {
+            try
+            {
+                // Crear un diálogo de actualización obligatoria que no pueda ser descartado
+                var builder = new AlertDialog.Builder(activity);
+                builder.SetTitle("Actualización Requerida");
+                builder.SetMessage("Una actualización importante está disponible y debe ser instalada para continuar usando la aplicación.");
+                builder.SetCancelable(false);
+
+                builder.SetPositiveButton("Instalar Ahora", async (sender, args) => {
+                    try
+                    {
+                        // Intentar instalar directamente
+                        InstallApk(apkPath, activity);
+
+                        // Si el usuario no completa la instalación, intentar de nuevo después de un rato
+                        await Task.Delay(10000);
+
+                        // Comprobar si la versión actual sigue siendo la misma (es decir, no se instaló)
+                        var updateCheck = await CheckForUpdate();
+                        if (updateCheck.HasUpdate)
+                        {
+                            // Mostrar de nuevo el diálogo
+                            ShowForceUpdateDialog(apkPath, activity);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"❌ Error al iniciar instalación: {ex.Message}");
+                        // Reintentar
+                        ShowForceUpdateDialog(apkPath, activity);
+                    }
+                });
+
+                // No dar opción a cancelar
+                var dialog = builder.Create();
+                dialog.Show();
+
+                // Impedir que el usuario cierre la aplicación presionando atrás
+                dialog.KeyPress += (sender, e) => {
+                    if (e.KeyCode == Android.Views.Keycode.Back)
+                    {
+                        e.Handled = true; // Evitar que el evento sea manejado por el sistema
+                    }
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error al mostrar diálogo de actualización: {ex.Message}");
+            }
+        }
+
+        private void AcquireWakeLock(Context context)
+        {
+            try
+            {
+                if (_wakeLock == null)
+                {
+                    PowerManager powerManager = (PowerManager)context.GetSystemService(Context.PowerService);
+                    _wakeLock = powerManager.NewWakeLock(
+                        WakeLockFlags.Partial | WakeLockFlags.AcquireCausesWakeup,
+                        "DISMOGT_REPORTES:UpdateWakeLock");
+                    _wakeLock.Acquire(30 * 60 * 1000L); // 30 minutos máximo
+                    Console.WriteLine("🔋 WakeLock adquirido para evitar suspensión durante la descarga");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error al adquirir WakeLock: {ex.Message}");
+            }
+        }
+
+        private void ReleaseWakeLock()
+        {
+            try
+            {
+                if (_wakeLock != null && _wakeLock.IsHeld)
+                {
+                    _wakeLock.Release();
+                    _wakeLock = null;
+                    Console.WriteLine("🔋 WakeLock liberado");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error al liberar WakeLock: {ex.Message}");
+            }
+        }
+
+        public void InstallApk(string apkPath, Context context)
+        {
+            try
+            {
                 var file = new Java.IO.File(apkPath);
 
                 if (!file.Exists())
@@ -169,10 +318,10 @@ namespace DISMOGT_REPORTES.Services
                     return;
                 }
 
-                // 🔹 Corrección del uso de FileProvider
+                // Utilizar FileProvider para obtener URI
                 var fileUri = AndroidX.Core.Content.FileProvider.GetUriForFile(
                     context,
-                    "com.dismogt.app.fileprovider",
+                    $"{context.PackageName}.fileprovider",
                     file
                 );
 
@@ -180,34 +329,86 @@ namespace DISMOGT_REPORTES.Services
 
                 var intent = new Intent(Intent.ActionView);
                 intent.SetDataAndType(fileUri, "application/vnd.android.package-archive");
-                intent.SetFlags(ActivityFlags.ClearTop | ActivityFlags.NewTask | ActivityFlags.GrantReadUriPermission);
-                intent.SetFlags(ActivityFlags.NoHistory | ActivityFlags.ClearWhenTaskReset); 
 
-                if (Build.VERSION.SdkInt >= (BuildVersionCodes)34)
-                {
-                    Console.WriteLine("📌 Ejecutando instalación en Android 14 o superior...");
-                    intent.SetFlags(ActivityFlags.GrantReadUriPermission);
-                }
+                // Asegurarse de que el intent puede iniciarse desde un servicio o actividad
+                intent.AddFlags(ActivityFlags.NewTask);
+                intent.AddFlags(ActivityFlags.GrantReadUriPermission);
 
-                if (intent.ResolveActivity(context.PackageManager) != null)
+                // En Android 8+ se necesita iniciar desde una actividad
+                Activity activity = context as Activity;
+                if (activity != null)
                 {
+                    // Iniciar desde activity directamente es más confiable
                     activity.StartActivity(intent);
-                    Console.WriteLine("✅ Instalador del APK iniciado correctamente.");
                 }
                 else
                 {
-                    Console.WriteLine("❌ No se encontró una aplicación para manejar la instalación del APK.");
+                    // Si no es actividad, intentamos desde el contexto
+                    context.StartActivity(intent);
                 }
+
+                Console.WriteLine("✅ Instalador del APK iniciado correctamente.");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ Error al iniciar la instalación del APK: {ex.Message}");
+
+                // Intentar de manera alternativa
+                try
+                {
+                    // Intento alternativo para Android más nuevos
+                    var file = new Java.IO.File(apkPath);
+                    var intent = new Intent(Intent.ActionInstallPackage);
+                    intent.SetDataAndType(
+                        AndroidX.Core.Content.FileProvider.GetUriForFile(
+                            context,
+                            $"{context.PackageName}.fileprovider",
+                            file
+                        ),
+                        "application/vnd.android.package-archive"
+                    );
+                    intent.AddFlags(ActivityFlags.NewTask);
+                    intent.AddFlags(ActivityFlags.GrantReadUriPermission);
+
+                    context.StartActivity(intent);
+                    Console.WriteLine("✅ Instalador del APK iniciado usando método alternativo.");
+                }
+                catch (Exception ex2)
+                {
+                    Console.WriteLine($"❌ También falló el método alternativo: {ex2.Message}");
+                }
             }
         }
 
         private bool IsConnectedToInternet()
         {
             return Connectivity.Current.NetworkAccess == NetworkAccess.Internet;
+        }
+    }
+
+    // Receptor para escuchar cuando se ha completado la instalación de un paquete
+    [BroadcastReceiver(Enabled = true, Exported = true)]
+    [IntentFilter(new[] { Intent.ActionPackageAdded, Intent.ActionPackageReplaced })]
+    public class PackageInstalledReceiver : BroadcastReceiver
+    {
+        public override void OnReceive(Context context, Intent intent)
+        {
+            if (intent.Action == Intent.ActionPackageAdded || intent.Action == Intent.ActionPackageReplaced)
+            {
+                string packageName = intent.Data.SchemeSpecificPart;
+                if (packageName == context.PackageName)
+                {
+                    Console.WriteLine($"✅ Paquete {packageName} instalado/actualizado correctamente");
+
+                    // Abrir la aplicación después de actualizar
+                    var launchIntent = context.PackageManager.GetLaunchIntentForPackage(context.PackageName);
+                    if (launchIntent != null)
+                    {
+                        launchIntent.AddFlags(ActivityFlags.NewTask);
+                        context.StartActivity(launchIntent);
+                    }
+                }
+            }
         }
     }
 }
