@@ -14,6 +14,17 @@ namespace DISMOGT_REPORTES.Services.LocationFusion
         private DateTime _lastPredictionTime = DateTime.MinValue;
         private double _lastSpeed = 0;
         private double _lastBearing = 0;
+        private double _consistencyThreshold = 1.5; // Valor predeterminado
+
+        /// <summary>
+        /// Establece el umbral de consistencia para la detección de movimientos
+        /// </summary>
+        /// <param name="threshold">Valor del umbral</param>
+        public void SetConsistencyThreshold(double threshold)
+        {
+            _consistencyThreshold = threshold;
+            Console.WriteLine($"🔧 Umbral de consistencia actualizado a: {threshold}");
+        }
 
         /// <summary>
         /// Predice una ubicación basada en el movimiento actual
@@ -134,15 +145,15 @@ namespace DISMOGT_REPORTES.Services.LocationFusion
                 // 2. Si el dispositivo está quieto, no debería haber grandes cambios en la ubicación
 
                 // Ajustar umbrales según el contexto y la precisión
-                double threshold = 1.0; // m/s, umbral predeterminado
+                double threshold = _consistencyThreshold; // Usar el umbral configurado
 
                 if (context == MovementContext.Indoor)
                 {
-                    threshold = 3.0; // Más tolerancia en interiores debido a mala señal
+                    threshold = threshold * 2.0; // Más tolerancia en interiores debido a mala señal
                 }
                 else if (context == MovementContext.Vehicle)
                 {
-                    threshold = 1.5; // Mayor umbral en vehículos
+                    threshold = threshold * 1.0; // Mantener umbral en vehículos
                 }
 
                 bool locationShowsMovement = speed > threshold;

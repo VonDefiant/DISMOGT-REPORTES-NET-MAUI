@@ -33,13 +33,4 @@ namespace DISMOGT_REPORTES.Services.LocationFusion
         public string SuspiciousReason { get; set; }
     }
 
-    /// <summary>
-    /// Clase para almacenar datos históricos de ubicación con contexto
-    /// </summary>
-    public class FusionLocationData
-    {
-        public Location Location { get; set; }
-        public MovementContext Context { get; set; }
-        public DateTime Timestamp { get; set; }
-    }
 }

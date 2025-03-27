@@ -3,6 +3,7 @@ using Microsoft.Maui.LifecycleEvents;
 using DISMO_REPORTES.Services;
 using DISMOGT_REPORTES;
 using DISMOGT_REPORTES.Services;
+using DISMOGT_REPORTES.Services.LocationFusion;
 using Shiny;
 using Shiny.Hosting;
 using Shiny.Jobs;
@@ -41,6 +42,17 @@ namespace DISMOGT_REPORTES
             builder.Services.AddSingleton<GpsService>();
             builder.Services.AddGps<GpsService>();
 
+            // NUEVO: Configurar el servicio LocationFusion con valores optimizados
+            // Usamos el namespace completo para evitar ambigüedades
+            builder.Services.AddSingleton<DISMOGT_REPORTES.Services.LocationFusionService>(provider =>
+            {
+                var service = new DISMOGT_REPORTES.Services.LocationFusionService(Android.App.Application.Context);
+                service.SetFilteringLevel(0.02); // Filtrado ultramínimo (5%)
+                service.SamplingFrequencyMs = 150; // Muestreo cada 250ms (4 muestras por segundo)
+                service.ConfigureAnomalyAlerts(AnomalyAlertLevel.Medium); // Nivel de detección equilibrado
+                return service;
+            });
+
             // Firebase Push
             builder.Services.AddSingleton<PushDelegate>();
             builder.Services.AddPush<PushDelegate>();
@@ -58,7 +70,7 @@ namespace DISMOGT_REPORTES
                         // Inicializaciones específicas de Android
                         Console.WriteLine("🚀 Aplicación MAUI inicializada");
 
-                        // Iniciar el timer para ejecutar LocationJob cada 15 minutos
+                        // Iniciar el timer para ejecutar LocationJob cada 5 minutos (más frecuente)
                         InitializePeriodicLocationJob();
                     })
                     .OnResume((activity) =>
@@ -108,10 +120,10 @@ namespace DISMOGT_REPORTES
                     }
                 },
                 null,
-                TimeSpan.FromMinutes(1),      // Primera ejecución después de 1 minut
-                TimeSpan.FromMinutes(15));    // Después cada 15 minutos
+                TimeSpan.FromMinutes(1),      // Primera ejecución después de 1 minuto
+                TimeSpan.FromMinutes(5));     // MODIFICADO: Cada 5 minutos para mayor densidad de puntos
 
-                Console.WriteLine("⏰ Timer periódico inicializado correctamente");
+                Console.WriteLine("⏰ Timer periódico inicializado cada 5 minutos para mayor densidad de puntos");
             }
         }
     }
