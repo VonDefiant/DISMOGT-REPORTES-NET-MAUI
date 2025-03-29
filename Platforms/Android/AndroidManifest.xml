@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionName="0.0.57" package="com.dismogt.app" android:versionCode="2">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionName="0.0.58" package="com.dismogt.app" android:versionCode="2">
 	<application android:allowBackup="true" android:icon="@mipmap/appicon" android:supportsRtl="true" android:label="DISMOGT REPORTES">
 		<!-- 🔥 Configuración de Firebase -->
 		<meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@mipmap/appicon" />
@@ -20,18 +20,11 @@
 		</receiver>
 		<!-- Y asegúrate de que esté declarado el servicio: -->
 		<service android:name=".Platforms.Android.LocationForegroundService" android:enabled="true" android:exported="false" android:foregroundServiceType="location" />
-
-		<service
-		android:name=".Services.UpdateDownloadService"
-		android:enabled="true"
-		android:exported="false"
-		android:foregroundServiceType="dataSync" />
-
+		<service android:name=".Services.UpdateDownloadService" android:enabled="true" android:exported="false" android:foregroundServiceType="dataSync" />
 		<!-- Configuración del FileProvider -->
 		<provider android:name="androidx.core.content.FileProvider" android:authorities="com.dismogt.app.fileprovider" android:grantUriPermissions="true" android:exported="false">
 			<meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
 		</provider>
-
 	</application>
 	<!-- Permisos de red -->
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />

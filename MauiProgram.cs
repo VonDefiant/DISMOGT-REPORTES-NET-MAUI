@@ -48,7 +48,7 @@ namespace DISMOGT_REPORTES
             {
                 var service = new DISMOGT_REPORTES.Services.LocationFusionService(Android.App.Application.Context);
                 service.SetFilteringLevel(0.02); // Filtrado ultramínimo (5%)
-                service.SamplingFrequencyMs = 150; // Muestreo cada 250ms (4 muestras por segundo)
+                service.SamplingFrequencyMs = 500; // Muestreo cada 250ms (4 muestras por segundo)
                 service.ConfigureAnomalyAlerts(AnomalyAlertLevel.Medium); // Nivel de detección equilibrado
                 return service;
             });

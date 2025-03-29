@@ -19,7 +19,7 @@ namespace DISMOGT_REPORTES.Services
         private bool _isInitialized = false;
 
         // New sampling frequency property
-        public double SamplingFrequencyMs { get; set; } = 150; // 250ms (4 samples per second)
+        public double SamplingFrequencyMs { get; set; } = 500; // 250ms (4 samples per second)
 
         /// <summary>
         /// Constructor del servicio de fusión

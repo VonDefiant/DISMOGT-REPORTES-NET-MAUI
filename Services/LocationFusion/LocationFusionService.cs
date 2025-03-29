@@ -69,7 +69,7 @@ namespace DISMOGT_REPORTES.Services.LocationFusion
         private AnomalyAlertLevel _alertLevel = AnomalyAlertLevel.Medium;
         private double _accelerationThreshold = 0.7;
         private double _filteringLevel = 0.05; // Ultra-minimal filtering (5% of normal)
-        private double _samplingFrequencyMs = 150; // 250ms (4 samples per second)
+        private double _samplingFrequencyMs = 500; // 250ms (4 samples per second)
         private DateTime _lastSamplingTime = DateTime.MinValue;
 
         /// <summary>
