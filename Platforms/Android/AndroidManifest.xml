@@ -1,67 +1,99 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:versionName="0.0.59" package="com.dismogt.app" android:versionCode="2">
-	<application android:allowBackup="true" android:icon="@mipmap/appicon" android:supportsRtl="true" android:label="DISMOGT REPORTES">
-		<!-- 🔥 Configuración de Firebase -->
-		<meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@mipmap/appicon" />
-		<meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/notification_color" />
-		<meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="default_channel" />
-		<!-- 🔔 Asegurar que se use Shiny como receptor de notificaciones -->
-		<receiver android:enabled="true" android:exported="true" android:name="com.shiny.push.ShinyFirebaseReceiver">
-			<intent-filter>
-				<action android:name="com.google.firebase.MESSAGING_EVENT" />
-			</intent-filter>
-		</receiver>
-		<!-- Receptor para manejar reinicios del dispositivo -->
-		<receiver android:enabled="true" android:exported="true" android:name="com.shiny.ShinyBootReceiver">
-			<intent-filter>
-				<action android:name="android.intent.action.BOOT_COMPLETED" />
-				<action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-			</intent-filter>
-		</receiver>
-		<!-- Y asegúrate de que esté declarado el servicio: -->
-		<service android:name=".Platforms.Android.LocationForegroundService" android:enabled="true" android:exported="false" android:foregroundServiceType="location" />
-		<service android:name=".Services.UpdateDownloadService" android:enabled="true" android:exported="false" android:foregroundServiceType="dataSync" />
-		<!-- Configuración del FileProvider -->
-		<provider android:name="androidx.core.content.FileProvider" android:authorities="com.dismogt.app.fileprovider" android:grantUriPermissions="true" android:exported="false">
-			<meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
-		</provider>
-	</application>
-	<!-- Permisos de red -->
-	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-	<uses-permission android:name="android.permission.INTERNET" />
-	<!-- Permisos de almacenamiento -->
-	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-	<uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
-	<!-- Permisos de ubicación -->
-	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-	<uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-	<!-- Permisos de estado del dispositivo -->
-	<uses-permission android:name="android.permission.READ_PHONE_STATE" />
-	<uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
-	<uses-permission android:name="android.permission.READ_PRECISE_PHONE_STATE" />
-	<!-- Permiso para instalar paquetes (necesario para actualizar la app con APK) -->
-	<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-	<!-- Permisos de energía y batería -->
-	<uses-permission android:name="android.permission.WAKE_LOCK" />
-	<uses-permission android:name="android.permission.BATTERY_STATS" />
-	<uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-	<!-- Permisos de notificaciones -->
-	<uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
-	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-	<!-- Permisos adicionales para compatibilidad -->
-	<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-	<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
-	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-	<uses-permission android:name="android.permission.INSTANT_APP_FOREGROUND_SERVICE" />
-	<uses-permission android:name="android.permission.LOCATION_HARDWARE" />
-	<uses-permission android:name="android.permission.MANAGE_DEVICE_POLICY_LOCATION" />
-	<uses-permission android:name="android.permission.MANAGE_DEVICE_POLICY_MOBILE_NETWORK" />
-	<uses-permission android:name="android.permission.ACCESS_MOCK_LOCATION" />
-	<uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
-	<uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
-	<uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    android:versionName="0.0.58"
+    package="com.dismogt.app"
+    android:versionCode="2">
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/appicon"
+        android:supportsRtl="true"
+        android:label="DISMOGT REPORTES"
+        android:requestLegacyExternalStorage="true">
+
+        <!-- 🔥 Configuración de Firebase -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/appicon" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_color"/>
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="default_channel" />
+
+        <!-- 🔔 Asegurar que se use Shiny como receptor de notificaciones -->
+        <receiver android:enabled="true" android:exported="true" android:name="com.shiny.push.ShinyFirebaseReceiver">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+            </intent-filter>
+        </receiver>
+
+        <!-- Receptor para manejar reinicios del dispositivo -->
+        <receiver android:enabled="true" android:exported="true" android:name="com.shiny.ShinyBootReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+            </intent-filter>
+        </receiver>
+        
+        <!-- Servicios -->
+        <service
+            android:name=".Platforms.Android.LocationForegroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+        <service 
+            android:name=".Services.UpdateDownloadService" 
+            android:enabled="true" 
+            android:exported="false" 
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Configuración del FileProvider -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.dismogt.app.fileprovider"
+            android:grantUriPermissions="true"
+            android:exported="false">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths"/>
+        </provider>
+
+    </application>
+
+    <!-- Permisos de red (compatibles con Android 11) -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+
+    <!-- Permisos de almacenamiento (ajustados para Android 11) -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
+
+    <!-- Permisos de ubicación -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+    <!-- Permisos de estado del dispositivo -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
+
+    <!-- Permiso para instalar paquetes (necesario para actualizar la app con APK) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!-- Permisos de energía y batería -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- Permisos de notificaciones -->
+    <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Permisos adicionales para compatibilidad -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 </manifest>
