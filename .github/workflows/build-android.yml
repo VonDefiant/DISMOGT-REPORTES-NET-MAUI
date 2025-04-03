@@ -21,6 +21,18 @@ jobs:
       - name: 📥 Clonar el repositorio
         uses: actions/checkout@v3
 
+      - name: 🔍 Debug - Imprimir Secretos (Solo para depuración)
+        run: |
+          echo "DISMOGT_KEYSTORE_B64: ${DISMOGT_KEYSTORE_B64_PREVIEW}"
+          echo "DISMOGT_KEYSTORE_PASSWORD: ${DISMOGT_KEYSTORE_PASSWORD_PREVIEW}"
+          echo "DISMOGT_KEY_ALIAS: ${DISMOGT_KEY_ALIAS_PREVIEW}"
+          echo "DISMOGT_KEY_PASSWORD: ${DISMOGT_KEY_PASSWORD_PREVIEW}"
+        env:
+          DISMOGT_KEYSTORE_B64_PREVIEW: ${{ secrets.DISMOGT_KEYSTORE_B64 }}
+          DISMOGT_KEYSTORE_PASSWORD_PREVIEW: ${{ secrets.DISMOGT_KEYSTORE_PASSWORD }}
+          DISMOGT_KEY_ALIAS_PREVIEW: ${{ secrets.DISMOGT_KEY_ALIAS }}
+          DISMOGT_KEY_PASSWORD_PREVIEW: ${{ secrets.DISMOGT_KEY_PASSWORD }}
+
       - name: 🔧 Instalar .NET y .NET MAUI
         uses: actions/setup-dotnet@v3
         with:
