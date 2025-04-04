@@ -479,16 +479,15 @@ namespace DISMO_REPORTES.Services
                 // Guardar la ubicación y los datos del reporte
                 SaveLocationToDatabase(location, idRuta, isSuspicious, suspiciousReason, isMoving, movementContextName, reportData);
             }
-        }   
+        }
 
-        // Método para obtener los datos del reporte
         private List<ReporteData> ObtenerDatosReporte()
         {
             try
             {
-                // Obtener la fecha actual en formato M/dd/yyyy (con barras en lugar de guiones)
-                // Ejemplo: 3/14/2025
-                string fechaActual = DateTime.Now.ToString("M/dd/yyyy");
+                // CAMBIO AQUÍ: Usar formato M/d/yyyy (sin ceros a la izquierda en el día)
+                // Ejemplo: 4/4/2025 en lugar de 4/04/2025
+                string fechaActual = $"{DateTime.Now.Month}/{DateTime.Now.Day}/{DateTime.Now.Year}";
 
                 Console.WriteLine($"📅 Consultando reporte con fecha: {fechaActual}");
 
