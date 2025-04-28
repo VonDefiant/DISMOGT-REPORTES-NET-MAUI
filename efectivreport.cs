@@ -112,6 +112,7 @@ namespace DISMOGT_REPORTES
                         data += $"Clientes visitados: {ruta.VisitasRealizadas} \n";
 
                         double efectividadVisita = (double)ruta.VisitasRealizadas / ruta.ClientesRutero * 100;
+                        data += $"\nEfectividad de ventas: {ruta.EfectividadVTA}";
                         data += $"\nEfectividad de visita: {efectividadVisita:0.00}% \n";
                         data += $"Clientes con venta fuera de ruta: {cuenta}\n";
                         data += $"Clientes visitados fuera de ruta: {cuentaVisita}\n";
